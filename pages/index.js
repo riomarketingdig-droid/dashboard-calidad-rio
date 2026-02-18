@@ -1,11 +1,5 @@
 import { useEffect, useState } from 'react'
-import { createClient } from '@supabase/supabase-js'
-
-// Configuración de conexión con tus llaves de Vercel
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-)
+import { supabase } from '../lib/supabaseClient'
 
 export default function Dashboard() {
   const [agents, setAgents] = useState([])
@@ -46,7 +40,7 @@ export default function Dashboard() {
       <header className="flex flex-col md:flex-row justify-between items-center mb-8 bg-white p-6 rounded-2xl shadow-sm border border-slate-100 gap-4">
         <div className="flex items-center gap-4">
           {/* Tu logo cargado en la carpeta public */}
-          <img src="/logo.png" alt="Logo RIO" className="h-14 w-auto object-contain" />
+          <img src="/Logotipo RIO a color.png" alt="Logo RIO" className="h-14 w-auto object-contain" />
           <div className="border-l pl-4 border-slate-200">
             <h1 className="text-xl font-black text-slate-800 uppercase tracking-tight leading-none">
               Call Center Performance
