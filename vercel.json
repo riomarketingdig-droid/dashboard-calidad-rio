@@ -1,13 +1,3 @@
 {
-  "framework": "nextjs",
-  "routes": [
-    {
-      "src": "/upload",
-      "dest": "/upload"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/"
-    }
-  ]
+  "framework": "nextjs"
 }
