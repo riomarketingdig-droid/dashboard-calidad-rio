@@ -333,44 +333,50 @@ export default function Dashboard() {
                         <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">Mar</th>
                         <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">Abr</th>
                         <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">May</th>
-                        <th className="p-4 text-xs font-black text-slate-400 uppercase text-center flex items-center gap-1">
-                          Tendencia
-                          <InfoTooltip content="Comparación vs período anterior. ↑ mejora, ↓ empeora, → estable" />
+                        <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            Tendencia
+                            <InfoTooltip content="Comparación vs período anterior. ↑ mejora, ↓ empeora, → estable" />
+                          </div>
                         </th>
-                        <th className="p-4 text-xs font-black text-slate-400 uppercase text-center flex items-center gap-1">
-                          Estatus
-                          <InfoTooltip content={
-                            <div>
-                              <p><span className="text-emerald-400">🟢 Cumple:</span> ≥ meta</p>
-                              <p><span className="text-amber-400">🟡 En desarrollo:</span> 80-99% de meta</p>
-                              <p><span className="text-red-400">🔴 Atención:</span> &lt;80% de meta</p>
-                            </div>
-                          } />
+                        <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            Estatus
+                            <InfoTooltip content={
+                              <div>
+                                <p><span className="text-emerald-400">🟢 Cumple:</span> ≥ meta</p>
+                                <p><span className="text-amber-400">🟡 En desarrollo:</span> 80-99% de meta</p>
+                                <p><span className="text-red-400">🔴 Atención:</span> &lt;80% de meta</p>
+                              </div>
+                            } />
+                          </div>
                         </th>
                       </tr>
                     </thead>
                     <tbody>
                       {coordinacionResumen.map((item, idx) => {
                         const tendencia = getTendenciaIcon(item.indicador);
+                        const v = parseFloat(item.valor);
+                        const fmt = (n) => isNaN(n) ? '-' : `${n}%`;
                         return (
                           <tr key={idx} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
-                            <td className="p-4 font-medium text-slate-800">{item.indicador}</td>
-                            <td className="p-4 text-center font-bold text-slate-600">{item.meta}</td>
-                            <td className="p-4 text-center font-mono">{item.valor}%</td>
-                            <td className="p-4 text-center font-mono">{Math.round(item.valor * 1.01)}%</td>
-                            <td className="p-4 text-center font-mono">{Math.round(item.valor * 1.02)}%</td>
-                            <td className="p-4 text-center font-mono">{Math.round(item.valor * 0.99)}%</td>
-                            <td className="p-4 text-center font-mono">{item.valor}%</td>
+                            <td className="p-4 text-sm font-medium text-slate-800 whitespace-nowrap">{item.indicador}</td>
+                            <td className="p-4 text-center text-sm font-bold text-slate-600">{item.meta}</td>
+                            <td className="p-4 text-center text-sm font-mono">{fmt(v)}</td>
+                            <td className="p-4 text-center text-sm font-mono">{fmt(isNaN(v) ? NaN : Math.round(v * 1.01))}</td>
+                            <td className="p-4 text-center text-sm font-mono">{fmt(isNaN(v) ? NaN : Math.round(v * 1.02))}</td>
+                            <td className="p-4 text-center text-sm font-mono">{fmt(isNaN(v) ? NaN : Math.round(v * 0.99))}</td>
+                            <td className="p-4 text-center text-sm font-mono">{fmt(v)}</td>
                             <td className="p-4 text-center">
-                              <span className={`inline-flex items-center gap-1 ${getTendenciaColor(tendencia)}`}>
+                              <span className={`inline-flex items-center gap-1 text-sm ${getTendenciaColor(tendencia)}`}>
                                 {tendencia}
-                                <span className="text-[10px]">
+                                <span className="text-xs">
                                   {tendencia === '↑' ? '+2%' : tendencia === '↓' ? '-3%' : '0%'}
                                 </span>
                               </span>
                             </td>
                             <td className="p-4 text-center">
-                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${
+                              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${
                                 idx < 2 ? 'bg-emerald-100 text-emerald-600' : 
                                 idx === 2 ? 'bg-amber-100 text-amber-600' : 
                                 'bg-red-100 text-red-600'
@@ -409,44 +415,50 @@ export default function Dashboard() {
                         <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">Mar</th>
                         <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">Abr</th>
                         <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">May</th>
-                        <th className="p-4 text-xs font-black text-slate-400 uppercase text-center flex items-center gap-1">
-                          Tendencia
-                          <InfoTooltip content="Comparación vs período anterior. ↑ mejora, ↓ empeora, → estable" />
+                        <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            Tendencia
+                            <InfoTooltip content="Comparación vs período anterior. ↑ mejora, ↓ empeora, → estable" />
+                          </div>
                         </th>
-                        <th className="p-4 text-xs font-black text-slate-400 uppercase text-center flex items-center gap-1">
-                          Estatus
-                          <InfoTooltip content={
-                            <div>
-                              <p><span className="text-emerald-400">🟢 Cumple:</span> ≥ meta</p>
-                              <p><span className="text-amber-400">🟡 En desarrollo:</span> 80-99% de meta</p>
-                              <p><span className="text-red-400">🔴 Atención:</span> &lt;80% de meta</p>
-                            </div>
-                          } />
+                        <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            Estatus
+                            <InfoTooltip content={
+                              <div>
+                                <p><span className="text-emerald-400">🟢 Cumple:</span> ≥ meta</p>
+                                <p><span className="text-amber-400">🟡 En desarrollo:</span> 80-99% de meta</p>
+                                <p><span className="text-red-400">🔴 Atención:</span> &lt;80% de meta</p>
+                              </div>
+                            } />
+                          </div>
                         </th>
                       </tr>
                     </thead>
                     <tbody>
                       {agendamientoResumen.map((item, idx) => {
                         const tendencia = getTendenciaIcon(item.indicador);
+                        const v = parseFloat(item.valor);
+                        const fmt = (n) => isNaN(n) ? '-' : `${n}%`;
                         return (
                           <tr key={idx} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
-                            <td className="p-4 font-medium text-slate-800">{item.indicador}</td>
-                            <td className="p-4 text-center font-bold text-slate-600">{item.meta}</td>
-                            <td className="p-4 text-center font-mono">{item.valor}%</td>
-                            <td className="p-4 text-center font-mono">{Math.round(item.valor * 1.01)}%</td>
-                            <td className="p-4 text-center font-mono">{Math.round(item.valor * 1.02)}%</td>
-                            <td className="p-4 text-center font-mono">{Math.round(item.valor * 0.99)}%</td>
-                            <td className="p-4 text-center font-mono">{item.valor}%</td>
+                            <td className="p-4 text-sm font-medium text-slate-800 whitespace-nowrap">{item.indicador}</td>
+                            <td className="p-4 text-center text-sm font-bold text-slate-600">{item.meta}</td>
+                            <td className="p-4 text-center text-sm font-mono">{fmt(v)}</td>
+                            <td className="p-4 text-center text-sm font-mono">{fmt(isNaN(v) ? NaN : Math.round(v * 1.01))}</td>
+                            <td className="p-4 text-center text-sm font-mono">{fmt(isNaN(v) ? NaN : Math.round(v * 1.02))}</td>
+                            <td className="p-4 text-center text-sm font-mono">{fmt(isNaN(v) ? NaN : Math.round(v * 0.99))}</td>
+                            <td className="p-4 text-center text-sm font-mono">{fmt(v)}</td>
                             <td className="p-4 text-center">
-                              <span className={`inline-flex items-center gap-1 ${getTendenciaColor(tendencia)}`}>
+                              <span className={`inline-flex items-center gap-1 text-sm ${getTendenciaColor(tendencia)}`}>
                                 {tendencia}
-                                <span className="text-[10px]">
+                                <span className="text-xs">
                                   {tendencia === '↑' ? '+1%' : tendencia === '↓' ? '-2%' : '0%'}
                                 </span>
                               </span>
                             </td>
                             <td className="p-4 text-center">
-                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${
+                              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${
                                 idx < 3 ? 'bg-emerald-100 text-emerald-600' : 
                                 idx === 3 ? 'bg-amber-100 text-amber-600' : 
                                 'bg-red-100 text-red-600'
@@ -539,15 +551,17 @@ export default function Dashboard() {
                       <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">No Conf.</th>
                       <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">SNC LAB</th>
                       <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">% Hallazgos</th>
-                      <th className="p-4 text-xs font-black text-slate-400 uppercase text-center flex items-center gap-1">
-                        Semáforo
-                        <InfoTooltip content={
-                          <div>
-                            <p><span className="text-emerald-400">🟢 Excelente:</span> Efectividad ≥98% y Tiempo ≤7min y NoConf=0</p>
-                            <p><span className="text-amber-400">🟡 En desarrollo:</span> Efectividad ≥95% o Tiempo ≤8min o NoConf≤2</p>
-                            <p><span className="text-red-400">🔴 Atención:</span> No cumple criterios mínimos</p>
-                          </div>
-                        } />
+                      <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          Semáforo
+                          <InfoTooltip content={
+                            <div>
+                              <p><span className="text-emerald-400">🟢 Excelente:</span> Efectividad ≥98% y Tiempo ≤7min y NoConf=0</p>
+                              <p><span className="text-amber-400">🟡 En desarrollo:</span> Efectividad ≥95% o Tiempo ≤8min o NoConf≤2</p>
+                              <p><span className="text-red-400">🔴 Atención:</span> No cumple criterios mínimos</p>
+                            </div>
+                          } />
+                        </div>
                       </th>
                     </tr>
                   </thead>
