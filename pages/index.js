@@ -32,20 +32,73 @@ export default function Dashboard() {
     año: 2025
   });
 
+  // Calcular rango de fechas según el período seleccionado
+  const getRangoDeFechas = (periodo) => {
+    const año = periodo.año || new Date().getFullYear();
+    
+    if (periodo.tipo === 'year') {
+      return { fechaInicio: `${año}-01-01`, fechaFin: `${año}-12-31` };
+    }
+    
+    if (periodo.tipo === 'month') {
+      const meses = { 'Enero':1,'Febrero':2,'Marzo':3,'Abril':4,'Mayo':5,'Junio':6,
+                      'Julio':7,'Agosto':8,'Septiembre':9,'Octubre':10,'Noviembre':11,'Diciembre':12 };
+      const mes = meses[periodo.valor] || 1;
+      const ultimo = new Date(año, mes, 0).getDate();
+      const mm = String(mes).padStart(2,'0');
+      return { fechaInicio: `${año}-${mm}-01`, fechaFin: `${año}-${mm}-${ultimo}` };
+    }
+    
+    if (periodo.tipo === 'quarter') {
+      const trimestres = { 'Q1':[1,3], 'Q2':[4,6], 'Q3':[7,9], 'Q4':[10,12] };
+      const [mesInicio, mesFin] = trimestres[periodo.valor] || [1,3];
+      const ultimo = new Date(año, mesFin, 0).getDate();
+      const mmI = String(mesInicio).padStart(2,'0');
+      const mmF = String(mesFin).padStart(2,'0');
+      return { fechaInicio: `${año}-${mmI}-01`, fechaFin: `${año}-${mmF}-${ultimo}` };
+    }
+    
+    if (periodo.tipo === 'week') {
+      // Calcular la semana ISO
+      const semana = parseInt(periodo.valor) || 1;
+      const primerDia = new Date(año, 0, 1 + (semana - 1) * 7);
+      const ultimoDia = new Date(primerDia);
+      ultimoDia.setDate(primerDia.getDate() + 6);
+      const fmt = (d) => d.toISOString().split('T')[0];
+      return { fechaInicio: fmt(primerDia), fechaFin: fmt(ultimoDia) };
+    }
+    
+    return {};
+  };
+
   // Función para cargar todos los datos
   const cargarDatos = async () => {
     setLoading(true);
     try {
+      const { fechaInicio, fechaFin } = getRangoDeFechas(periodo);
+      const params = new URLSearchParams();
+      if (fechaInicio) params.append('fechaInicio', fechaInicio);
+      if (fechaFin) params.append('fechaFin', fechaFin);
+      const qs = params.toString() ? `?${params.toString()}` : '';
+
+      // Parámetros para gerencial (usa mes/año/semana)
+      const gerencialParams = new URLSearchParams();
+      if (periodo.año) gerencialParams.append('año', periodo.año);
+      if (periodo.tipo === 'month') gerencialParams.append('mes', periodo.valor);
+      if (periodo.tipo === 'quarter') gerencialParams.append('trimestre', periodo.valor);
+      if (periodo.tipo === 'week') gerencialParams.append('semana', periodo.valor);
+      const gerencialQs = gerencialParams.toString() ? `?${gerencialParams.toString()}` : '';
+
       const [gerencial, coordinacion, agendamiento, recs] = await Promise.all([
-        fetch('/api/datos/gerencial').then(res => res.json()),
-        fetch('/api/datos/coordinacion').then(res => res.json()),
-        fetch('/api/datos/agendamiento').then(res => res.json()),
+        fetch(`/api/datos/gerencial${gerencialQs}`).then(res => res.json()),
+        fetch(`/api/datos/coordinacion${qs}`).then(res => res.json()),
+        fetch(`/api/datos/agendamiento${qs}`).then(res => res.json()),
         fetch('/api/recomendaciones').then(res => res.json())
       ]);
-      setGerencialData(gerencial);
-      setCoordinacionData(coordinacion);
-      setAgendamientoData(agendamiento);
-      setRecomendaciones(recs);
+      setGerencialData(Array.isArray(gerencial) ? gerencial : []);
+      setCoordinacionData(Array.isArray(coordinacion) ? coordinacion : []);
+      setAgendamientoData(Array.isArray(agendamiento) ? agendamiento : []);
+      setRecomendaciones(Array.isArray(recs) ? recs : []);
     } catch (error) {
       console.error('Error cargando datos:', error);
     } finally {
@@ -60,10 +113,10 @@ export default function Dashboard() {
     return () => window.removeEventListener('refresh-data', handleRefresh);
   }, []);
 
-  // Cargar datos al inicio
+  // Cargar datos al inicio y cuando cambie el período
   useEffect(() => {
     cargarDatos();
-  }, []);
+  }, [periodo]);
 
   // Función para generar feedback con IA
   const generarFeedbackIA = async (recomendacion) => {
