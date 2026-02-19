@@ -1,20 +1,31 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// Inicializar Gemini con tu API key
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
+  // Verificar que la API key existe
+  if (!process.env.GEMINI_API_KEY) {
+    console.error('GEMINI_API_KEY no está configurada en las variables de entorno');
+    return res.status(500).json({ 
+      error: 'API Key no configurada. Configura GEMINI_API_KEY en Vercel.' 
+    });
+  }
+
   try {
     const { agente, metrica, valor, tendencia, nivel, area } = req.body;
 
-    // Obtener el modelo
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    if (!agente || !metrica || !nivel || !area) {
+      return res.status(400).json({ error: 'Faltan campos requeridos' });
+    }
 
-    // Construir el prompt contextual
+    // Inicializar Gemini
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+    // Modelo actualizado: gemini-2.0-flash (reemplaza a 1.5-flash)
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+
     const prompt = `
       Eres un coach comercial experto en call centers. Genera un feedback de 2 frases para el agente:
       
@@ -42,8 +53,21 @@ export default async function handler(req, res) {
       feedback,
       sugerencia: feedback
     });
+
   } catch (error) {
     console.error('Error generando feedback:', error);
+
+    // Mensajes de error más descriptivos según el tipo
+    if (error.message?.includes('API_KEY_INVALID') || error.message?.includes('API key')) {
+      return res.status(401).json({ error: 'API Key de Gemini inválida. Verifica tu clave en Vercel.' });
+    }
+    if (error.message?.includes('quota') || error.message?.includes('RESOURCE_EXHAUSTED')) {
+      return res.status(429).json({ error: 'Cuota de Gemini agotada. Intenta más tarde.' });
+    }
+    if (error.message?.includes('not found') || error.message?.includes('404')) {
+      return res.status(500).json({ error: 'Modelo de IA no encontrado. Contacta al administrador.' });
+    }
+
     res.status(500).json({ error: 'Error al generar feedback con IA' });
   }
 }
