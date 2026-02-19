@@ -24,7 +24,7 @@ export default async function handler(req, res) {
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
     // Modelo actualizado: gemini-2.0-flash (reemplaza a 1.5-flash)
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
 
     const prompt = `
       Eres un coach comercial experto en call centers. Genera un feedback de 2 frases para el agente:
