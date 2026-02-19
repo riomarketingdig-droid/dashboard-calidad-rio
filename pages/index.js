@@ -16,7 +16,16 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [filtroNivel, setFiltroNivel] = useState('TODOS');
   const [filtroTierCoordinacion, setFiltroTierCoordinacion] = useState(null);
-  const [recomendacionesCompletadas, setRecomendacionesCompletadas] = useState([]);
+  const [recomendacionesCompletadas, setRecomendacionesCompletadas] = useState(() => {
+    // Cargar desde localStorage al iniciar
+    if (typeof window !== 'undefined') {
+      try {
+        const guardadas = localStorage.getItem('recomendaciones-completadas');
+        return guardadas ? JSON.parse(guardadas) : [];
+      } catch { return []; }
+    }
+    return [];
+  });
   const [periodo, setPeriodo] = useState({
     tipo: 'year',
     valor: 'Año Completo',
@@ -110,11 +119,13 @@ export default function Dashboard() {
     }
   };
 
-  // Función para marcar recomendación como completada
+  // Función para marcar recomendación como completada (persiste en localStorage)
   const marcarCompletada = (id) => {
-    setRecomendacionesCompletadas(prev => 
-      prev.includes(id) ? prev.filter(r => r !== id) : [...prev, id]
-    );
+    setRecomendacionesCompletadas(prev => {
+      const nuevas = prev.includes(id) ? prev.filter(r => r !== id) : [...prev, id];
+      try { localStorage.setItem('recomendaciones-completadas', JSON.stringify(nuevas)); } catch {}
+      return nuevas;
+    });
   };
 
   // Filtrar recomendaciones por nivel
@@ -555,10 +566,10 @@ export default function Dashboard() {
                         <div className="flex items-center justify-center gap-1">
                           Semáforo
                           <InfoTooltip content={
-                            <div>
-                              <p><span className="text-emerald-400">🟢 Excelente:</span> Efectividad ≥98% y Tiempo ≤7min y NoConf=0</p>
-                              <p><span className="text-amber-400">🟡 En desarrollo:</span> Efectividad ≥95% o Tiempo ≤8min o NoConf≤2</p>
-                              <p><span className="text-red-400">🔴 Atención:</span> No cumple criterios mínimos</p>
+                            <div className="w-56 text-left space-y-1">
+                              <p><span className="text-emerald-400 font-bold">🟢 Excelente:</span> Efectividad ≥98%, Tiempo ≤7min y NoConf=0</p>
+                              <p><span className="text-amber-400 font-bold">🟡 En desarrollo:</span> Efectividad ≥95% o Tiempo ≤8min o NoConf≤2</p>
+                              <p><span className="text-red-400 font-bold">🔴 Atención:</span> No cumple criterios mínimos</p>
                             </div>
                           } />
                         </div>
