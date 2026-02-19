@@ -16,6 +16,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [filtroNivel, setFiltroNivel] = useState('TODOS');
   const [filtroTierCoordinacion, setFiltroTierCoordinacion] = useState(null);
+  const [recomendacionesCompletadas, setRecomendacionesCompletadas] = useState([]);
   const [periodo, setPeriodo] = useState({
     tipo: 'year',
     valor: 'Año Completo',
@@ -63,10 +64,10 @@ export default function Dashboard() {
     ));
 
     try {
-      // Extraer valor numérico de la métrica (ej: "43.0% conversión" → 43)
+      // Extraer valor numérico de la métrica
       const valorNumerico = parseFloat(recomendacion.metrica) || 0;
       
-      // Determinar tendencia (simulada - idealmente vendría de datos reales)
+      // Determinar tendencia (podríamos mejorarla después con datos reales)
       const tendencia = Math.random() > 0.5 ? 'up' : 'down';
 
       const response = await fetch('/api/feedback-ia', {
@@ -82,18 +83,38 @@ export default function Dashboard() {
         })
       });
 
+      if (!response.ok) {
+        throw new Error('Error en la respuesta de la API');
+      }
+
       const data = await response.json();
       
       // Actualizar la recomendación con el feedback
       setRecomendaciones(prev => prev.map(r => 
         r.id === recomendacion.id ? { ...r, feedback: data.feedback, generandoFeedback: false } : r
       ));
+
+      // Hacer scroll suave hasta la recomendación actualizada
+      setTimeout(() => {
+        const elemento = document.getElementById(`recomendacion-${recomendacion.id}`);
+        if (elemento) {
+          elemento.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
     } catch (error) {
       console.error('Error:', error);
       setRecomendaciones(prev => prev.map(r => 
         r.id === recomendacion.id ? { ...r, generandoFeedback: false } : r
       ));
+      alert('Error al generar feedback. Por favor intenta de nuevo.');
     }
+  };
+
+  // Función para marcar recomendación como completada
+  const marcarCompletada = (id) => {
+    setRecomendacionesCompletadas(prev => 
+      prev.includes(id) ? prev.filter(r => r !== id) : [...prev, id]
+    );
   };
 
   // Filtrar recomendaciones por nivel
@@ -120,7 +141,6 @@ export default function Dashboard() {
   };
 
   const getTendenciaIcon = (indicador) => {
-    // Aquí iría lógica real comparando con período anterior
     const tendencias = {
       '% Efectividad Registro': 'up',
       '% Cumplimiento Tiempo 7 min': 'up',
@@ -210,8 +230,8 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* MAIN CONTENT */}
-      <main className="p-4 md:p-6 max-w-7xl mx-auto">
+      {/* MAIN CONTENT — sin max-w para evitar tablas cortadas */}
+      <main className="p-4 md:p-6">
         {activeTab === 'gerencial' && (
           <>
             {/* TARJETAS DE COORDINACIÓN */}
@@ -742,12 +762,18 @@ export default function Dashboard() {
                   </div>
                 ) : (
                   recomendacionesFiltradas.map(rec => (
-                    <div key={rec.id} className={`mb-3 p-4 rounded-xl border ${
-                      rec.nivel === 'URGENTE' ? 'bg-red-50 border-red-200' :
-                      rec.nivel === 'CRÍTICO' ? 'bg-orange-50 border-orange-200' :
-                      rec.nivel === 'ALTO' ? 'bg-amber-50 border-amber-200' :
-                      'bg-emerald-50 border-emerald-200'
-                    }`}>
+                    <div
+                      key={rec.id}
+                      id={`recomendacion-${rec.id}`}
+                      className={`mb-3 p-4 rounded-xl border transition-all ${
+                        recomendacionesCompletadas.includes(rec.id)
+                          ? 'bg-slate-50 border-slate-200 opacity-60'
+                          : rec.nivel === 'URGENTE' ? 'bg-red-50 border-red-200' :
+                            rec.nivel === 'CRÍTICO' ? 'bg-orange-50 border-orange-200' :
+                            rec.nivel === 'ALTO' ? 'bg-amber-50 border-amber-200' :
+                            'bg-emerald-50 border-emerald-200'
+                      }`}
+                    >
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex items-center gap-2">
                           <span className={`w-2 h-2 rounded-full ${
@@ -777,8 +803,8 @@ export default function Dashboard() {
                         <span>📅 Límite: {rec.fechaLimite}</span>
                       </div>
 
-                      {/* Botón de IA */}
-                      <div className="flex justify-end">
+                      {/* Botones de acción */}
+                      <div className="flex justify-end gap-2">
                         <button
                           onClick={() => generarFeedbackIA(rec)}
                           disabled={rec.generandoFeedback}
@@ -788,6 +814,21 @@ export default function Dashboard() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                           </svg>
                           {rec.generandoFeedback ? 'Generando...' : 'Generar Feedback con IA'}
+                        </button>
+
+                        {/* Botón Marcar hecho */}
+                        <button
+                          onClick={() => marcarCompletada(rec.id)}
+                          className={`text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors ${
+                            recomendacionesCompletadas.includes(rec.id)
+                              ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-transparent'
+                          }`}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          {recomendacionesCompletadas.includes(rec.id) ? 'Completado' : 'Marcar hecho'}
                         </button>
                       </div>
 
