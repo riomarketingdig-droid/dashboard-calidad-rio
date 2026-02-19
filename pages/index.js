@@ -34,41 +34,77 @@ export default function Dashboard() {
 
   // Calcular rango de fechas según el período seleccionado
   const getRangoDeFechas = (periodo) => {
-    const año = periodo.año || new Date().getFullYear();
-    
+    const ano = periodo.ano || periodo.año || new Date().getFullYear();
+
     if (periodo.tipo === 'year') {
-      return { fechaInicio: `${año}-01-01`, fechaFin: `${año}-12-31` };
+      return { fechaInicio: `${ano}-01-01`, fechaFin: `${ano}-12-31` };
     }
-    
+
+    if (periodo.tipo === '52weeks') {
+      const hoy = new Date();
+      const hace52 = new Date(hoy);
+      hace52.setDate(hoy.getDate() - 364);
+      const fmt = (d) => d.toISOString().split('T')[0];
+      return { fechaInicio: fmt(hace52), fechaFin: fmt(hoy) };
+    }
+
     if (periodo.tipo === 'month') {
       const meses = { 'Enero':1,'Febrero':2,'Marzo':3,'Abril':4,'Mayo':5,'Junio':6,
                       'Julio':7,'Agosto':8,'Septiembre':9,'Octubre':10,'Noviembre':11,'Diciembre':12 };
       const mes = meses[periodo.valor] || 1;
-      const ultimo = new Date(año, mes, 0).getDate();
+      const ultimo = new Date(ano, mes, 0).getDate();
       const mm = String(mes).padStart(2,'0');
-      return { fechaInicio: `${año}-${mm}-01`, fechaFin: `${año}-${mm}-${ultimo}` };
+      return { fechaInicio: `${ano}-${mm}-01`, fechaFin: `${ano}-${mm}-${ultimo}` };
     }
-    
+
     if (periodo.tipo === 'quarter') {
-      const trimestres = { 'Q1':[1,3], 'Q2':[4,6], 'Q3':[7,9], 'Q4':[10,12] };
+      const trimestres = {
+        'Q1 (Ene-Mar)':[1,3], 'Q2 (Abr-Jun)':[4,6],
+        'Q3 (Jul-Sep)':[7,9], 'Q4 (Oct-Dic)':[10,12],
+        'Q1':[1,3], 'Q2':[4,6], 'Q3':[7,9], 'Q4':[10,12]
+      };
       const [mesInicio, mesFin] = trimestres[periodo.valor] || [1,3];
-      const ultimo = new Date(año, mesFin, 0).getDate();
+      const ultimo = new Date(ano, mesFin, 0).getDate();
       const mmI = String(mesInicio).padStart(2,'0');
       const mmF = String(mesFin).padStart(2,'0');
-      return { fechaInicio: `${año}-${mmI}-01`, fechaFin: `${año}-${mmF}-${ultimo}` };
+      return { fechaInicio: `${ano}-${mmI}-01`, fechaFin: `${ano}-${mmF}-${ultimo}` };
     }
-    
+
+    if (periodo.tipo === 'semester') {
+      const semestres = {
+        'S1 (Ene-Jun)': [1, 6],
+        'S2 (Jul-Dic)': [7, 12]
+      };
+      const [mesInicio, mesFin] = semestres[periodo.valor] || [1, 6];
+      const ultimo = new Date(ano, mesFin, 0).getDate();
+      const mmI = String(mesInicio).padStart(2,'0');
+      const mmF = String(mesFin).padStart(2,'0');
+      return { fechaInicio: `${ano}-${mmI}-01`, fechaFin: `${ano}-${mmF}-${ultimo}` };
+    }
+
+    if (periodo.tipo === 'bimonth') {
+      const bimestres = {
+        'B1 (Ene-Feb)': [1, 2], 'B2 (Mar-Abr)': [3, 4],
+        'B3 (May-Jun)': [5, 6], 'B4 (Jul-Ago)': [7, 8],
+        'B5 (Sep-Oct)': [9, 10], 'B6 (Nov-Dic)': [11, 12]
+      };
+      const [mesInicio, mesFin] = bimestres[periodo.valor] || [1, 2];
+      const ultimo = new Date(ano, mesFin, 0).getDate();
+      const mmI = String(mesInicio).padStart(2,'0');
+      const mmF = String(mesFin).padStart(2,'0');
+      return { fechaInicio: `${ano}-${mmI}-01`, fechaFin: `${ano}-${mmF}-${ultimo}` };
+    }
+
     if (periodo.tipo === 'week') {
-      // Calcular la semana ISO
       const semana = parseInt(periodo.valor) || 1;
-      const primerDia = new Date(año, 0, 1 + (semana - 1) * 7);
+      const primerDia = new Date(ano, 0, 1 + (semana - 1) * 7);
       const ultimoDia = new Date(primerDia);
       ultimoDia.setDate(primerDia.getDate() + 6);
       const fmt = (d) => d.toISOString().split('T')[0];
       return { fechaInicio: fmt(primerDia), fechaFin: fmt(ultimoDia) };
     }
-    
-    return {};
+
+    return { fechaInicio: `${ano}-01-01`, fechaFin: `${ano}-12-31` };
   };
 
   // Función para cargar todos los datos
@@ -82,12 +118,13 @@ export default function Dashboard() {
       const qs = params.toString() ? `?${params.toString()}` : '';
 
       // Parámetros para gerencial (usa mes/año/semana)
+      const ano = periodo.ano || periodo.año || new Date().getFullYear();
       const gerencialParams = new URLSearchParams();
-      if (periodo.año) gerencialParams.append('año', periodo.año);
+      gerencialParams.append('ano', ano);
       if (periodo.tipo === 'month') gerencialParams.append('mes', periodo.valor);
       if (periodo.tipo === 'quarter') gerencialParams.append('trimestre', periodo.valor);
       if (periodo.tipo === 'week') gerencialParams.append('semana', periodo.valor);
-      const gerencialQs = gerencialParams.toString() ? `?${gerencialParams.toString()}` : '';
+      const gerencialQs = `?${gerencialParams.toString()}`;
 
       const [gerencial, coordinacion, agendamiento, recs] = await Promise.all([
         fetch(`/api/datos/gerencial${gerencialQs}`).then(res => res.json()),
