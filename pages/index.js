@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import PeriodSelector from '../components/layout/PeriodSelector';
 import FloatingUploadButton from '../components/upload/FloatingUploadButton';
@@ -72,7 +72,7 @@ export default function Dashboard() {
   };
 
   // Función para cargar todos los datos
-  const cargarDatos = async () => {
+  const cargarDatos = useCallback(async () => {
     setLoading(true);
     try {
       const { fechaInicio, fechaFin } = getRangoDeFechas(periodo);
@@ -104,19 +104,19 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [periodo]);
 
   // Escuchar evento de refresh
   useEffect(() => {
     const handleRefresh = () => cargarDatos();
     window.addEventListener('refresh-data', handleRefresh);
     return () => window.removeEventListener('refresh-data', handleRefresh);
-  }, []);
+  }, [cargarDatos]);
 
   // Cargar datos al inicio y cuando cambie el período
   useEffect(() => {
     cargarDatos();
-  }, [periodo]);
+  }, [cargarDatos]);
 
   // Función para generar feedback con IA
   const generarFeedbackIA = async (recomendacion) => {
