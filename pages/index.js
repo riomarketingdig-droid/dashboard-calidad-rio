@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import TabNavigation from '../components/layout/TabNavigation';
 import PeriodSelector from '../components/layout/PeriodSelector';
@@ -7,10 +7,17 @@ import CoordinacionTable from '../components/gerencial/CoordinacionTable';
 import AgendamientoTable from '../components/gerencial/AgendamientoTable';
 import CoordinacionDetalle from '../components/operativo/CoordinacionDetalle';
 import AgendamientoDetalle from '../components/operativo/AgendamientoDetalle';
+import PlanAccion from '../components/recomendaciones/PlanAccion';
 import FloatingUploadButton from '../components/upload/FloatingUploadButton';
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('gerencial');
+  const [periodo, setPeriodo] = useState({
+    tipo: 'mes',
+    valor: 'Enero',
+    año: 2025
+  });
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const renderContent = () => {
@@ -18,15 +25,17 @@ export default function Dashboard() {
       case 'gerencial':
         return (
           <>
-            <MetricCards />
-            <CoordinacionTable />
-            <AgendamientoTable />
+            <MetricCards periodo={periodo} />
+            <CoordinacionTable periodo={periodo} />
+            <AgendamientoTable periodo={periodo} />
           </>
         );
       case 'coordinacion':
-        return <CoordinacionDetalle />;
+        return <CoordinacionDetalle periodo={periodo} />;
       case 'agendamiento':
-        return <AgendamientoDetalle />;
+        return <AgendamientoDetalle periodo={periodo} />;
+      case 'planaccion':
+        return <PlanAccion />;
       default:
         return null;
     }
@@ -43,7 +52,10 @@ export default function Dashboard() {
               Tablero de Control
             </h1>
             <p className="text-xs text-slate-500 font-bold mt-1 tracking-widest uppercase">
-              Visión Gerencial
+              {activeTab === 'gerencial' ? 'Visión Gerencial' : 
+               activeTab === 'coordinacion' ? 'Detalle Coordinación' :
+               activeTab === 'agendamiento' ? 'Detalle Agendamiento' :
+               'Plan de Acción'}
             </p>
           </div>
         </div>
@@ -59,11 +71,56 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* PERIOD SELECTOR */}
-      <PeriodSelector />
+      {/* PERIOD SELECTOR - Solo visible en vistas gerenciales */}
+      {activeTab !== 'planaccion' && (
+        <PeriodSelector periodo={periodo} setPeriodo={setPeriodo} />
+      )}
 
-      {/* TAB NAVIGATION */}
-      <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
+      {/* TAB NAVIGATION - Actualizada con nueva pestaña */}
+      <div className="border-b border-slate-200 mb-6">
+        <nav className="flex space-x-8" aria-label="Tabs">
+          <button
+            onClick={() => setActiveTab('gerencial')}
+            className={`py-3 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${
+              activeTab === 'gerencial'
+                ? 'border-slate-800 text-slate-800'
+                : 'border-transparent text-slate-400 hover:text-slate-600 hover:border-slate-300'
+            }`}
+          >
+            📊 VISIÓN GERENCIAL
+          </button>
+          <button
+            onClick={() => setActiveTab('coordinacion')}
+            className={`py-3 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${
+              activeTab === 'coordinacion'
+                ? 'border-slate-800 text-slate-800'
+                : 'border-transparent text-slate-400 hover:text-slate-600 hover:border-slate-300'
+            }`}
+          >
+            ✓ COORDINACIÓN
+          </button>
+          <button
+            onClick={() => setActiveTab('agendamiento')}
+            className={`py-3 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${
+              activeTab === 'agendamiento'
+                ? 'border-slate-800 text-slate-800'
+                : 'border-transparent text-slate-400 hover:text-slate-600 hover:border-slate-300'
+            }`}
+          >
+            📅 AGENDAMIENTO
+          </button>
+          <button
+            onClick={() => setActiveTab('planaccion')}
+            className={`py-3 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${
+              activeTab === 'planaccion'
+                ? 'border-slate-800 text-slate-800'
+                : 'border-transparent text-slate-400 hover:text-slate-600 hover:border-slate-300'
+            }`}
+          >
+            🎯 PLAN DE ACCIÓN
+          </button>
+        </nav>
+      </div>
 
       {/* CONTENT */}
       {renderContent()}
@@ -73,7 +130,7 @@ export default function Dashboard() {
 
       {/* FOOTER */}
       <footer className="mt-8 text-center text-[10px] text-slate-400 font-bold uppercase tracking-[3px]">
-        Análisis Integral de Desempeño
+        Análisis Integral de Desempeño · Recomendaciones basadas en IA
       </footer>
     </div>
   );
