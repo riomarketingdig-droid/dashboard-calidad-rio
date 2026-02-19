@@ -13,7 +13,7 @@ export default async function handler(req, res) {
     const { agente, metrica, valor, tendencia, nivel, area } = req.body;
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const tendenciaTexto = tendencia === "up" ? "mejorando" : tendencia === "down" ? "empeorando" : "estable";
 
@@ -26,14 +26,6 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error("Error generando feedback:", error.message);
-
-    if (error.message?.includes("API_KEY_INVALID") || error.message?.includes("API key")) {
-      return res.status(401).json({ error: "API Key invalida." });
-    }
-    if (error.message?.includes("RESOURCE_EXHAUSTED")) {
-      return res.status(429).json({ error: "Cuota agotada." });
-    }
-
     res.status(500).json({ error: `Error: ${error.message}` });
   }
 }
