@@ -15,7 +15,6 @@ export default async function handler(req, res) {
 
     // Reglas para Coordinación
     coordinacion.forEach(agente => {
-      // Regla 1: Baja efectividad
       if (agente.efectividadSIO < 95) {
         recomendaciones.push({
           id: `coord-${agente.colaborador}-efectividad`,
@@ -35,7 +34,6 @@ export default async function handler(req, res) {
         });
       }
 
-      // Regla 2: Tiempo promedio alto
       if (agente.tiempoPromedio > 8) {
         recomendaciones.push({
           id: `coord-${agente.colaborador}-tiempo`,
@@ -55,7 +53,6 @@ export default async function handler(req, res) {
         });
       }
 
-      // Regla 3: Reincidencias altas
       if (agente.reincidencias >= 2) {
         recomendaciones.push({
           id: `coord-${agente.colaborador}-reincidencia`,
@@ -78,7 +75,6 @@ export default async function handler(req, res) {
 
     // Reglas para Agendamiento
     agendamiento.forEach(asesor => {
-      // Regla 4: Baja conversión
       if (asesor.conversion < 50) {
         recomendaciones.push({
           id: `agen-${asesor.asesor}-conversion`,
@@ -98,7 +94,6 @@ export default async function handler(req, res) {
         });
       }
 
-      // Regla 5: Muchos hallazgos
       const totalHallazgos = (asesor.hallazgosCitas || 0) + 
                             (asesor.hallazgosCotizacion || 0) + 
                             (asesor.hallazgosAgendas || 0);
@@ -122,7 +117,6 @@ export default async function handler(req, res) {
         });
       }
 
-      // Regla 6: Reincidencias en agendamiento
       if (asesor.reincidencias >= 2) {
         recomendaciones.push({
           id: `agen-${asesor.asesor}-reincidencia`,
@@ -142,7 +136,6 @@ export default async function handler(req, res) {
         });
       }
 
-      // Regla 7: Excelencia (reconocimiento)
       if (asesor.conversion > 60 && totalHallazgos === 0 && asesor.reincidencias === 0) {
         recomendaciones.push({
           id: `agen-${asesor.asesor}-excelencia`,
