@@ -3,7 +3,7 @@ import {
   guardarSeguimiento,
   cerrarSeguimiento,
   actualizarEmailEnviado
-} from '../../../lib/googleSheets';
+} from '../../lib/googleSheets';
 
 export default async function handler(req, res) {
 

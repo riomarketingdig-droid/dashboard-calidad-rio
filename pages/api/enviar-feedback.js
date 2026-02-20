@@ -223,7 +223,7 @@ export default async function handler(req, res) {
 
     // Marcar como enviado en Sheets si hay ID de seguimiento
     if (seguimientoId) {
-      const { actualizarEmailEnviado } = await import('../../../lib/googleSheets');
+      const { actualizarEmailEnviado } = await import('../../lib/googleSheets');
       await actualizarEmailEnviado(seguimientoId);
     }
 
