@@ -13,11 +13,16 @@ export default function Dashboard() {
   const [coordinacionData, setCoordinacionData] = useState([]);
   const [agendamientoData, setAgendamientoData] = useState([]);
   const [recomendaciones, setRecomendaciones] = useState([]);
+  const [colaboradores, setColaboradores] = useState([]);
+  const [seguimientos, setSeguimientos] = useState({});
   const [loading, setLoading] = useState(true);
   const [filtroNivel, setFiltroNivel] = useState('TODOS');
   const [filtroTierCoordinacion, setFiltroTierCoordinacion] = useState(null);
+  const [panelAbierto, setPanelAbierto] = useState(null); // ID de rec con panel abierto
+  const [notasForm, setNotasForm] = useState({}); // { [recId]: { notas, acuerdos, fechaCompromiso } }
+  const [guardando, setGuardando] = useState(null);
+  const [enviando, setEnviando] = useState(null);
   const [recomendacionesCompletadas, setRecomendacionesCompletadas] = useState(() => {
-    // Cargar desde localStorage al iniciar
     if (typeof window !== 'undefined') {
       try {
         const guardadas = localStorage.getItem('recomendaciones-completadas');
@@ -154,6 +159,114 @@ export default function Dashboard() {
   useEffect(() => {
     cargarDatos();
   }, [cargarDatos]);
+
+  // Cargar colaboradores (independiente del período)
+  useEffect(() => {
+    fetch('/api/datos/colaboradores')
+      .then(r => r.json())
+      .then(data => setColaboradores(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, []);
+
+  // Cargar seguimientos existentes
+  useEffect(() => {
+    fetch('/api/seguimiento')
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          const map = {};
+          data.forEach(s => {
+            if (!map[s.recomendacionId]) map[s.recomendacionId] = [];
+            map[s.recomendacionId].push(s);
+          });
+          setSeguimientos(map);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Helpers de colaboradores
+  const getColaborador = (nombre) =>
+    colaboradores.find(c => c.nombre.toLowerCase().includes((nombre || '').toLowerCase())) || null;
+
+  // Guardar notas/acuerdos en Sheets
+  const guardarNotas = async (rec) => {
+    const form = notasForm[rec.id] || {};
+    if (!form.notas && !form.acuerdos) return;
+    setGuardando(rec.id);
+    try {
+      const colab = getColaborador(rec.agente);
+      const body = {
+        recomendacionId: rec.id,
+        colaborador: rec.agente,
+        area: rec.area,
+        nivel: rec.nivel,
+        metrica: rec.metrica,
+        notas: form.notas || '',
+        acuerdos: form.acuerdos || '',
+        fechaCompromiso: form.fechaCompromiso || '',
+        responsable: 'Alcantar Janeth',
+        feedbackIA: rec.feedback || '',
+      };
+      const resp = await fetch('/api/seguimiento', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await resp.json();
+      if (data.id) {
+        setSeguimientos(prev => ({
+          ...prev,
+          [rec.id]: [...(prev[rec.id] || []), { ...body, id: data.id, estado: 'PENDIENTE', fechaRegistro: new Date().toISOString().split('T')[0] }]
+        }));
+        alert('Notas guardadas correctamente en Google Sheets');
+      }
+    } catch (e) {
+      alert('Error guardando notas: ' + e.message);
+    } finally {
+      setGuardando(null);
+    }
+  };
+
+  // Enviar feedback por correo
+  const enviarFeedbackCorreo = async (rec) => {
+    const colab = getColaborador(rec.agente);
+    if (!colab?.emailColaborador) {
+      alert('Este colaborador no tiene email registrado. Agrégalo en la pestaña COLABORADORES del Google Sheets.');
+      return;
+    }
+    setEnviando(rec.id);
+    const form = notasForm[rec.id] || {};
+    try {
+      const resp = await fetch('/api/enviar-feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          colaborador: rec.agente,
+          area: rec.area,
+          nivel: rec.nivel,
+          metrica: rec.metrica,
+          notas: form.notas || '',
+          acuerdos: form.acuerdos || '',
+          fechaCompromiso: form.fechaCompromiso || '',
+          responsable: 'Alcantar Janeth',
+          feedbackIA: rec.feedback || '',
+          emailColaborador: colab.emailColaborador,
+          emailJefe: colab.emailJefe || '',
+        })
+      });
+      const data = await resp.json();
+      if (data.modoDesarrollo) {
+        alert('Modo desarrollo: configura MS_TENANT_ID, MS_CLIENT_ID, MS_CLIENT_SECRET, MS_SENDER_EMAIL en Vercel para enviar correos reales.');
+      } else {
+        alert(`Correo enviado a: ${data.destinatarios?.join(', ')}`);
+      }
+    } catch (e) {
+      alert('Error enviando correo: ' + e.message);
+    } finally {
+      setEnviando(null);
+    }
+  };
 
   // Función para generar feedback con IA
   const generarFeedbackIA = async (recomendacion) => {
@@ -870,107 +983,245 @@ export default function Dashboard() {
                 </p>
               </div>
               
-              <div className="p-4 max-h-[600px] overflow-y-auto">
+              <div className="p-4 max-h-[800px] overflow-y-auto">
                 {recomendacionesFiltradas.length === 0 ? (
                   <div className="p-8">
                     <EmptyState periodo="este nivel" tipo="filtro" />
                   </div>
                 ) : (
-                  recomendacionesFiltradas.map(rec => (
-                    <div
-                      key={rec.id}
-                      id={`recomendacion-${rec.id}`}
-                      className={`mb-3 p-4 rounded-xl border transition-all ${
-                        recomendacionesCompletadas.includes(rec.id)
-                          ? 'bg-slate-50 border-slate-200 opacity-60'
-                          : rec.nivel === 'URGENTE' ? 'bg-red-50 border-red-200' :
-                            rec.nivel === 'CRÍTICO' ? 'bg-orange-50 border-orange-200' :
-                            rec.nivel === 'ALTO' ? 'bg-amber-50 border-amber-200' :
-                            'bg-emerald-50 border-emerald-200'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <span className={`w-2 h-2 rounded-full ${
-                            rec.nivel === 'URGENTE' ? 'bg-red-600' :
-                            rec.nivel === 'CRÍTICO' ? 'bg-orange-500' :
-                            rec.nivel === 'ALTO' ? 'bg-amber-500' : 'bg-emerald-500'
-                          }`}></span>
-                          <span className="text-xs font-black uppercase">{rec.nivel}</span>
-                        </div>
-                        <span className="text-[10px] bg-white px-2 py-1 rounded-full border">
-                          {rec.area}
-                        </span>
-                      </div>
-                      
-                      <h4 className="font-bold text-slate-800 mb-1">{rec.agente}</h4>
-                      <p className="text-xs text-slate-600 mb-2">{rec.metrica}</p>
-                      
-                      <div className="bg-white/50 rounded-lg p-3 mb-2">
-                        <p className="text-sm font-medium mb-1">▶ {rec.sugerencia}</p>
-                        <div className="flex justify-between text-[10px] text-slate-500">
-                          <span>👤 {rec.responsable}</span>
-                          <span>⏱️ {rec.plazo}</span>
-                        </div>
-                      </div>
-                      
-                      <div className="text-[10px] text-slate-500 flex justify-between items-center mb-2">
-                        <span>📅 Límite: {rec.fechaLimite}</span>
-                      </div>
+                  recomendacionesFiltradas.map(rec => {
+                    const completada = recomendacionesCompletadas.includes(rec.id);
+                    const abierto = panelAbierto === rec.id;
+                    const form = notasForm[rec.id] || {};
+                    const segs = seguimientos[rec.id] || [];
+                    const colab = getColaborador(rec.agente);
+                    const tieneEmail = !!colab?.emailColaborador;
 
-                      {/* Botones de acción */}
-                      <div className="flex justify-end gap-2">
-                        <button
-                          onClick={() => generarFeedbackIA(rec)}
-                          disabled={rec.generandoFeedback}
-                          className="text-xs bg-[#0066CC] hover:bg-[#0052a3] text-white px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors disabled:opacity-50"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className={`h-3 w-3 ${rec.generandoFeedback ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                          </svg>
-                          {rec.generandoFeedback ? 'Generando...' : 'Generar Feedback con IA'}
-                        </button>
+                    return (
+                      <div
+                        key={rec.id}
+                        id={`recomendacion-${rec.id}`}
+                        className={`mb-4 rounded-xl border transition-all ${
+                          completada
+                            ? 'bg-slate-50 border-slate-200 opacity-70'
+                            : rec.nivel === 'URGENTE' ? 'bg-red-50 border-red-200' :
+                              rec.nivel === 'CRÍTICO' ? 'bg-orange-50 border-orange-200' :
+                              rec.nivel === 'ALTO' ? 'bg-amber-50 border-amber-200' :
+                              'bg-emerald-50 border-emerald-200'
+                        }`}
+                      >
+                        {/* CABECERA */}
+                        <div className="p-4">
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                rec.nivel === 'URGENTE' ? 'bg-red-600' :
+                                rec.nivel === 'CRÍTICO' ? 'bg-orange-500' :
+                                rec.nivel === 'ALTO' ? 'bg-amber-500' : 'bg-emerald-500'
+                              }`}></span>
+                              <span className="text-xs font-black uppercase">{rec.nivel}</span>
+                              {segs.length > 0 && (
+                                <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">
+                                  {segs.filter(s => s.estado === 'PENDIENTE').length} acuerdo(s) activo(s)
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-[10px] bg-white px-2 py-1 rounded-full border">{rec.area}</span>
+                          </div>
 
-                        {/* Botón Marcar hecho */}
-                        <button
-                          onClick={() => marcarCompletada(rec.id)}
-                          className={`text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors ${
-                            recomendacionesCompletadas.includes(rec.id)
-                              ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
-                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-transparent'
-                          }`}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                          {recomendacionesCompletadas.includes(rec.id) ? 'Completado' : 'Marcar hecho'}
-                        </button>
-                      </div>
+                          <h4 className="font-bold text-slate-800 mb-1">{rec.agente}</h4>
+                          <p className="text-xs text-slate-600 mb-3">{rec.metrica}</p>
 
-                      {/* Feedback generado */}
-                      {rec.feedback && (
-                        <div className="mt-3 p-3 bg-white rounded-lg border border-slate-200">
-                          <p className="text-xs text-slate-700 italic">"{rec.feedback}"</p>
-                          <p className="text-[9px] text-slate-400 mt-1 text-right">Generado por Gemini AI</p>
+                          <div className="bg-white/50 rounded-lg p-3 mb-3">
+                            <p className="text-sm font-medium mb-1">▶ {rec.sugerencia}</p>
+                            <div className="flex justify-between text-[10px] text-slate-500">
+                              <span>👤 {rec.responsable}</span>
+                              <span>⏱️ {rec.plazo} · 📅 {rec.fechaLimite}</span>
+                            </div>
+                          </div>
+
+                          {/* Feedback IA */}
+                          {rec.feedback && (
+                            <div className="mb-3 p-3 bg-white rounded-lg border border-blue-100">
+                              <p className="text-[10px] text-blue-500 font-bold uppercase mb-1">🤖 Feedback IA</p>
+                              <p className="text-xs text-slate-700 italic">"{rec.feedback}"</p>
+                            </div>
+                          )}
+
+                          {/* Seguimientos guardados anteriores */}
+                          {segs.length > 0 && (
+                            <div className="mb-3 space-y-2">
+                              {segs.map((seg, i) => (
+                                <div key={i} className="bg-white rounded-lg border border-slate-200 p-3">
+                                  <div className="flex justify-between items-center mb-1">
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase">
+                                      📋 Sesión {seg.fechaRegistro}
+                                    </span>
+                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                                      seg.estado === 'COMPLETADO'
+                                        ? 'bg-emerald-100 text-emerald-700'
+                                        : 'bg-amber-100 text-amber-700'
+                                    }`}>
+                                      {seg.estado}
+                                    </span>
+                                  </div>
+                                  {seg.notas && <p className="text-xs text-slate-600"><span className="font-semibold">Notas:</span> {seg.notas}</p>}
+                                  {seg.acuerdos && <p className="text-xs text-slate-600 mt-1"><span className="font-semibold">Acuerdos:</span> {seg.acuerdos}</p>}
+                                  {seg.fechaCompromiso && <p className="text-[10px] text-slate-400 mt-1">📅 Compromiso: {seg.fechaCompromiso}</p>}
+                                  {seg.emailEnviado === 'SI' && <p className="text-[10px] text-emerald-600 mt-1">✉️ Correo enviado</p>}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Botones principales */}
+                          <div className="flex flex-wrap justify-end gap-2">
+                            <button
+                              onClick={() => generarFeedbackIA(rec)}
+                              disabled={rec.generandoFeedback}
+                              className="text-xs bg-[#0066CC] hover:bg-[#0052a3] text-white px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors disabled:opacity-50"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className={`h-3 w-3 ${rec.generandoFeedback ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                              </svg>
+                              {rec.generandoFeedback ? 'Generando...' : 'Feedback IA'}
+                            </button>
+
+                            <button
+                              onClick={() => setPanelAbierto(abierto ? null : rec.id)}
+                              className={`text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors border ${
+                                abierto
+                                  ? 'bg-blue-600 text-white border-blue-600'
+                                  : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'
+                              }`}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                              {abierto ? 'Cerrar notas' : 'Agregar notas'}
+                            </button>
+
+                            <button
+                              onClick={() => marcarCompletada(rec.id)}
+                              className={`text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors ${
+                                completada
+                                  ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-transparent'
+                              }`}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              {completada ? 'Completado' : 'Marcar hecho'}
+                            </button>
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  ))
+
+                        {/* PANEL DE NOTAS Y ACUERDOS */}
+                        {abierto && (
+                          <div className="border-t border-white/50 bg-white/70 p-4 rounded-b-xl">
+                            <h5 className="text-xs font-black text-slate-600 uppercase tracking-wider mb-3">
+                              📝 Sesión de retroalimentación
+                            </h5>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                              <div>
+                                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">
+                                  Notas de la sesión
+                                </label>
+                                <textarea
+                                  rows={3}
+                                  placeholder="¿Qué se trató en la sesión? ¿Cómo reaccionó el colaborador?..."
+                                  value={form.notas || ''}
+                                  onChange={e => setNotasForm(prev => ({
+                                    ...prev,
+                                    [rec.id]: { ...prev[rec.id], notas: e.target.value }
+                                  }))}
+                                  className="w-full text-xs border border-slate-200 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none bg-white"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">
+                                  Acuerdos establecidos
+                                </label>
+                                <textarea
+                                  rows={3}
+                                  placeholder="¿Qué compromisos se pactaron? ¿Qué va a hacer el colaborador diferente?..."
+                                  value={form.acuerdos || ''}
+                                  onChange={e => setNotasForm(prev => ({
+                                    ...prev,
+                                    [rec.id]: { ...prev[rec.id], acuerdos: e.target.value }
+                                  }))}
+                                  className="w-full text-xs border border-slate-200 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none bg-white"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="flex flex-wrap items-end gap-3 mb-3">
+                              <div>
+                                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">
+                                  Fecha compromiso
+                                </label>
+                                <input
+                                  type="date"
+                                  value={form.fechaCompromiso || ''}
+                                  onChange={e => setNotasForm(prev => ({
+                                    ...prev,
+                                    [rec.id]: { ...prev[rec.id], fechaCompromiso: e.target.value }
+                                  }))}
+                                  className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+                                />
+                              </div>
+
+                              {/* Info de email del colaborador */}
+                              <div className="text-[10px] text-slate-400 flex-1">
+                                {tieneEmail
+                                  ? <span className="text-emerald-600">✉️ {colab.emailColaborador}{colab.emailJefe ? ` · CC: ${colab.emailJefe}` : ''}</span>
+                                  : <span className="text-amber-600">⚠️ Sin email — agregar en pestaña COLABORADORES del Sheets</span>
+                                }
+                              </div>
+                            </div>
+
+                            <div className="flex justify-end gap-2">
+                              <button
+                                onClick={() => guardarNotas(rec)}
+                                disabled={guardando === rec.id}
+                                className="text-xs bg-slate-700 hover:bg-slate-900 text-white px-4 py-1.5 rounded-lg flex items-center gap-1 transition-colors disabled:opacity-50"
+                              >
+                                {guardando === rec.id ? '⏳ Guardando...' : '💾 Guardar en Sheets'}
+                              </button>
+
+                              <button
+                                onClick={() => enviarFeedbackCorreo(rec)}
+                                disabled={enviando === rec.id || !tieneEmail}
+                                title={!tieneEmail ? 'Agrega el email del colaborador en la pestaña COLABORADORES' : ''}
+                                className={`text-xs px-4 py-1.5 rounded-lg flex items-center gap-1 transition-colors disabled:opacity-50 ${
+                                  tieneEmail
+                                    ? 'bg-[#0066CC] hover:bg-[#0052a3] text-white'
+                                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                                }`}
+                              >
+                                {enviando === rec.id ? '⏳ Enviando...' : '✉️ Enviar correo formal'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
                 )}
               </div>
               
               <div className="p-3 bg-slate-50 border-t border-slate-100 text-[9px] text-slate-400 text-center">
-                Las recomendaciones se actualizan automáticamente desde Google Sheets
+                Las recomendaciones se actualizan automáticamente desde Google Sheets · Notas guardadas en pestaña SEGUIMIENTO
               </div>
             </div>
           </div>
         )}
       </main>
 
-      {/* FLOATING BUTTON (actualizar) */}
       <FloatingUploadButton />
 
-      {/* FOOTER */}
       <footer className="mt-8 text-center text-[10px] text-slate-400 font-bold uppercase tracking-[3px] pb-4">
         Análisis Integral de Desempeño · Recomendaciones basadas en IA
       </footer>
