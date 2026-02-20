@@ -5,6 +5,7 @@ import FloatingUploadButton from '../components/upload/FloatingUploadButton';
 import SkeletonTable from '../components/ui/SkeletonTable';
 import EmptyState from '../components/ui/EmptyState';
 import InfoTooltip from '../components/ui/InfoTooltip';
+import FichaTecnica from '../components/ui/FichaTecnica';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -22,6 +23,7 @@ export default function Dashboard() {
   const [notasForm, setNotasForm] = useState({}); // { [recId]: { notas, acuerdos, fechaCompromiso } }
   const [guardando, setGuardando] = useState(null);
   const [enviando, setEnviando] = useState(null);
+  const [fichaColaborador, setFichaColaborador] = useState(null); // { datos, tipo }
   const [recomendacionesCompletadas, setRecomendacionesCompletadas] = useState(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -368,8 +370,21 @@ export default function Dashboard() {
     );
   }
 
+  // Aplanar todos los seguimientos para la ficha técnica
+  const seguimientosTodos = Object.values(seguimientos).flat();
+
   return (
     <div className="min-h-screen bg-[#f8fafc] font-sans text-slate-900">
+      {/* FICHA TÉCNICA MODAL */}
+      {fichaColaborador && (
+        <FichaTecnica
+          colaborador={fichaColaborador.datos}
+          tipo={fichaColaborador.tipo}
+          seguimientos={seguimientosTodos}
+          recomendaciones={recomendaciones}
+          onClose={() => setFichaColaborador(null)}
+        />
+      )}
       {/* STICKY HEADER */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-slate-100 shadow-sm">
         <div className="p-4 md:p-6">
@@ -769,7 +784,14 @@ export default function Dashboard() {
                   <tbody>
                     {coordinacionFiltrada.map((col, idx) => (
                       <tr key={idx} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
-                        <td className="p-4 font-medium text-slate-800">{col.colaborador}</td>
+                        <td className="p-4 font-medium text-slate-800">
+                          <button
+                            onClick={() => setFichaColaborador({ datos: col, tipo: 'coordinacion' })}
+                            className="text-left font-medium text-[#0066CC] hover:underline hover:text-[#0052a3] transition-colors"
+                          >
+                            {col.colaborador}
+                          </button>
+                        </td>
                         <td className="p-4 text-slate-600">{col.unidad}</td>
                         <td className="p-4 text-center">
                           <span className={`font-mono font-bold ${
@@ -847,7 +869,14 @@ export default function Dashboard() {
                   <tbody>
                     {agendamientoData.map((asesor, idx) => (
                       <tr key={idx} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
-                        <td className="p-4 font-medium text-slate-800 whitespace-nowrap">{asesor.asesor}</td>
+                        <td className="p-4 font-medium text-slate-800 whitespace-nowrap">
+                          <button
+                            onClick={() => setFichaColaborador({ datos: asesor, tipo: 'agendamiento' })}
+                            className="text-left font-medium text-[#0066CC] hover:underline hover:text-[#0052a3] transition-colors"
+                          >
+                            {asesor.asesor}
+                          </button>
+                        </td>
                         <td className="p-4 text-center font-mono">{asesor.oportunidades}</td>
                         <td className="p-4 text-center font-mono">{asesor.cierres}</td>
                         <td className="p-4 text-center">
