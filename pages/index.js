@@ -228,41 +228,28 @@ export default function Dashboard() {
     }
   };
 
-  // Enviar feedback por correo
-  const enviarFeedbackCorreo = async (rec) => {
-    const colab = getColaborador(rec.agente);
-    if (!colab?.emailColaborador) {
-      alert('Este colaborador no tiene email registrado. Agrégalo en la pestaña COLABORADORES del Google Sheets.');
-      return;
-    }
-    setEnviando(rec.id);
+  // Generar constancia PDF de retroalimentación
+  const generarPDF = async (rec) => {
     const form = notasForm[rec.id] || {};
+    const colab = getColaborador(rec.agente);
+    setEnviando(rec.id);
     try {
-      const resp = await fetch('/api/enviar-feedback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          colaborador: rec.agente,
-          area: rec.area,
-          nivel: rec.nivel,
-          metrica: rec.metrica,
-          notas: form.notas || '',
-          acuerdos: form.acuerdos || '',
-          fechaCompromiso: form.fechaCompromiso || '',
-          responsable: 'Alcantar Janeth',
-          feedbackIA: rec.feedback || '',
-          emailColaborador: colab.emailColaborador,
-          emailJefe: colab.emailJefe || '',
-        })
+      const { generarConstanciaPDF } = await import('../lib/generarConstanciaPDF');
+      await generarConstanciaPDF({
+        colaborador: rec.agente,
+        area: rec.area,
+        nivel: rec.nivel,
+        metrica: rec.metrica,
+        notas: form.notas || '',
+        acuerdos: form.acuerdos || '',
+        fechaCompromiso: form.fechaCompromiso || '',
+        responsable: 'Alcantar Janeth',
+        feedbackIA: rec.feedback || '',
+        unidad: colab?.unidad || '',
+        puesto: colab?.puesto || '',
       });
-      const data = await resp.json();
-      if (data.modoDesarrollo) {
-        alert('Modo desarrollo: configura MS_TENANT_ID, MS_CLIENT_ID, MS_CLIENT_SECRET, MS_SENDER_EMAIL en Vercel para enviar correos reales.');
-      } else {
-        alert(`Correo enviado a: ${data.destinatarios?.join(', ')}`);
-      }
     } catch (e) {
-      alert('Error enviando correo: ' + e.message);
+      alert('Error generando PDF: ' + e.message);
     } finally {
       setEnviando(null);
     }
@@ -1173,13 +1160,7 @@ export default function Dashboard() {
                                 />
                               </div>
 
-                              {/* Info de email del colaborador */}
-                              <div className="text-[10px] text-slate-400 flex-1">
-                                {tieneEmail
-                                  ? <span className="text-emerald-600">✉️ {colab.emailColaborador}{colab.emailJefe ? ` · CC: ${colab.emailJefe}` : ''}</span>
-                                  : <span className="text-amber-600">⚠️ Sin email — agregar en pestaña COLABORADORES del Sheets</span>
-                                }
-                              </div>
+
                             </div>
 
                             <div className="flex justify-end gap-2">
@@ -1192,16 +1173,11 @@ export default function Dashboard() {
                               </button>
 
                               <button
-                                onClick={() => enviarFeedbackCorreo(rec)}
-                                disabled={enviando === rec.id || !tieneEmail}
-                                title={!tieneEmail ? 'Agrega el email del colaborador en la pestaña COLABORADORES' : ''}
-                                className={`text-xs px-4 py-1.5 rounded-lg flex items-center gap-1 transition-colors disabled:opacity-50 ${
-                                  tieneEmail
-                                    ? 'bg-[#0066CC] hover:bg-[#0052a3] text-white'
-                                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                                }`}
+                                onClick={() => generarPDF(rec)}
+                                disabled={enviando === rec.id}
+                                className="text-xs bg-[#0066CC] hover:bg-[#0052a3] text-white px-4 py-1.5 rounded-lg flex items-center gap-1 transition-colors disabled:opacity-50"
                               >
-                                {enviando === rec.id ? '⏳ Enviando...' : '✉️ Enviar correo formal'}
+                                {enviando === rec.id ? '⏳ Generando...' : '📄 Descargar constancia PDF'}
                               </button>
                             </div>
                           </div>
