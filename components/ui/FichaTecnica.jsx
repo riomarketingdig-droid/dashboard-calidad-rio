@@ -22,8 +22,8 @@ function RadarChart({ datos }) {
     return {
       x: cx + r * pct * Math.cos(angulo),
       y: cy + r * pct * Math.sin(angulo),
-      lx: cx + (r + 18) * Math.cos(angulo),
-      ly: cy + (r + 18) * Math.sin(angulo),
+      lx: cx + (r + 22) * Math.cos(angulo),
+      ly: cy + (r + 22) * Math.sin(angulo),
       bx: cx + r * Math.cos(angulo),
       by: cy + r * Math.sin(angulo),
       label: d.label,
@@ -132,20 +132,20 @@ export default function FichaTecnica({ colaborador, tipo, seguimientos = [], rec
   const radarDatos = useMemo(() => {
     if (tipo === 'coordinacion') {
       return [
-        { label: 'Efectividad', valor: colaborador.efectividadSIO, max: 100, color: '#10b981' },
-        { label: 'Velocidad', valor: Math.max(0, 15 - colaborador.tiempoPromedio), max: 15, color: '#3b82f6' },
+        { label: 'Efect.', valor: colaborador.efectividadSIO, max: 100, color: '#10b981' },
+        { label: 'Veloc.', valor: Math.max(0, 15 - colaborador.tiempoPromedio), max: 15, color: '#3b82f6' },
         { label: 'Calidad', valor: Math.max(0, 10 - colaborador.noConformidades), max: 10, color: '#8b5cf6' },
-        { label: 'Hallazgos', valor: colaborador.efectividadHallazgos, max: 100, color: '#f59e0b' },
-        { label: 'Disciplina', valor: Math.max(0, 5 - colaborador.reincidencias), max: 5, color: '#ef4444' },
+        { label: 'Hallaz.', valor: colaborador.efectividadHallazgos, max: 100, color: '#f59e0b' },
+        { label: 'Discip.', valor: Math.max(0, 5 - colaborador.reincidencias), max: 5, color: '#ef4444' },
       ];
     } else {
       const totalH = (colaborador.hallazgosCitas || 0) + (colaborador.hallazgosCotizacion || 0) + (colaborador.hallazgosAgendas || 0);
       return [
-        { label: 'Conversión', valor: colaborador.conversion, max: 100, color: '#10b981' },
+        { label: 'Conv.', valor: colaborador.conversion, max: 100, color: '#10b981' },
         { label: 'Cierres', valor: colaborador.cierres, max: colaborador.oportunidades || 10, color: '#3b82f6' },
         { label: 'Calidad', valor: Math.max(0, 10 - (colaborador.noConformidades || 0)), max: 10, color: '#8b5cf6' },
         { label: 'Gestión', valor: Math.max(0, 10 - totalH), max: 10, color: '#f59e0b' },
-        { label: 'Disciplina', valor: Math.max(0, 5 - (colaborador.reincidencias || 0)), max: 5, color: '#ef4444' },
+        { label: 'Discip.', valor: Math.max(0, 5 - (colaborador.reincidencias || 0)), max: 5, color: '#ef4444' },
       ];
     }
   }, [colaborador, tipo]);
