@@ -13,6 +13,7 @@ export default function Dashboard() {
   const [gerencialData, setGerencialData] = useState([]);
   const [coordinacionData, setCoordinacionData] = useState([]);
   const [agendamientoData, setAgendamientoData] = useState([]);
+  const [tendenciasData, setTendenciasData] = useState([]);
   const [recomendaciones, setRecomendaciones] = useState([]);
   const [colaboradores, setColaboradores] = useState([]);
   const [seguimientos, setSeguimientos] = useState({});
@@ -133,16 +134,18 @@ export default function Dashboard() {
       if (periodo.tipo === 'week') gerencialParams.append('semana', periodo.valor);
       const gerencialQs = `?${gerencialParams.toString()}`;
 
-      const [gerencial, coordinacion, agendamiento, recs] = await Promise.all([
+      const [gerencial, coordinacion, agendamiento, recs, tendencias] = await Promise.all([
         fetch(`/api/datos/gerencial${gerencialQs}`).then(res => res.json()),
         fetch(`/api/datos/coordinacion${qs}`).then(res => res.json()),
         fetch(`/api/datos/agendamiento${qs}`).then(res => res.json()),
-        fetch('/api/recomendaciones').then(res => res.json())
+        fetch('/api/recomendaciones').then(res => res.json()),
+        fetch(`/api/datos/tendencias?ano=${ano}`).then(res => res.json()),
       ]);
       setGerencialData(Array.isArray(gerencial) ? gerencial : []);
       setCoordinacionData(Array.isArray(coordinacion) ? coordinacion : []);
       setAgendamientoData(Array.isArray(agendamiento) ? agendamiento : []);
       setRecomendaciones(Array.isArray(recs) ? recs : []);
+      setTendenciasData(Array.isArray(tendencias) ? tendencias : []);
     } catch (error) {
       console.error('Error cargando datos:', error);
     } finally {
@@ -333,6 +336,9 @@ export default function Dashboard() {
   // Agrupar datos para las vistas
   const coordinacionResumen = gerencialData.filter(d => d.proceso === 'Coordinación');
   const agendamientoResumen = gerencialData.filter(d => d.proceso === 'Agendamiento');
+  const tendenciasCoord = tendenciasData.filter(d => d.proceso === 'Coordinación');
+  const tendenciasAgen = tendenciasData.filter(d => d.proceso === 'Agendamiento');
+  const MESES_TABLA = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
   const getSemaforoColor = (semaforo) => {
     switch(semaforo) {
@@ -570,34 +576,61 @@ export default function Dashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {coordinacionResumen.map((item, idx) => {
-                        const tendencia = getTendenciaIcon(item.indicador);
-                        const v = parseFloat(item.valor);
-                        const fmt = (n) => isNaN(n) ? '-' : `${n}%`;
+                      {(tendenciasCoord.length > 0 ? tendenciasCoord : coordinacionResumen).map((item, idx) => {
+                        const esTendencia = tendenciasCoord.length > 0;
+                        const tendencia = esTendencia
+                          ? (item.tendencia === 'up' ? '↑' : item.tendencia === 'down' ? '↓' : '→')
+                          : getTendenciaIcon(item.indicador);
+                        const fmt = (n) => n === null || n === undefined ? '-' : `${parseFloat(n).toFixed(1)}%`;
+                        // Mostrar solo los 5 meses más recientes con datos
+                        const mesesConDatos = esTendencia
+                          ? MESES_TABLA.filter((_, i) => item.valores[i] !== null)
+                          : ['Ene','Feb','Mar','Abr','May'];
+                        const ultimos5 = mesesConDatos.slice(-5);
                         return (
                           <tr key={idx} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
                             <td className="p-4 text-sm font-medium text-slate-800 whitespace-nowrap">{item.indicador}</td>
                             <td className="p-4 text-center text-sm font-bold text-slate-600">{item.meta}</td>
-                            <td className="p-4 text-center text-sm font-mono">{fmt(v)}</td>
-                            <td className="p-4 text-center text-sm font-mono">{fmt(isNaN(v) ? NaN : Math.round(v * 1.01))}</td>
-                            <td className="p-4 text-center text-sm font-mono">{fmt(isNaN(v) ? NaN : Math.round(v * 1.02))}</td>
-                            <td className="p-4 text-center text-sm font-mono">{fmt(isNaN(v) ? NaN : Math.round(v * 0.99))}</td>
-                            <td className="p-4 text-center text-sm font-mono">{fmt(v)}</td>
+                            {esTendencia ? (
+                              MESES_TABLA.slice(0, 5).map((mes, mi) => (
+                                <td key={mes} className="p-4 text-center text-sm font-mono">
+                                  {fmt(item.valores[mi])}
+                                </td>
+                              ))
+                            ) : (
+                              <>
+                                <td className="p-4 text-center text-sm font-mono">{fmt(parseFloat(item.valor))}</td>
+                                <td className="p-4 text-center text-sm font-mono text-slate-300">-</td>
+                                <td className="p-4 text-center text-sm font-mono text-slate-300">-</td>
+                                <td className="p-4 text-center text-sm font-mono text-slate-300">-</td>
+                                <td className="p-4 text-center text-sm font-mono text-slate-300">-</td>
+                              </>
+                            )}
                             <td className="p-4 text-center">
-                              <span className={`inline-flex items-center gap-1 text-sm ${getTendenciaColor(tendencia)}`}>
+                              <span className={`inline-flex items-center gap-1 text-sm ${
+                                tendencia === '↑' ? 'text-emerald-600' :
+                                tendencia === '↓' ? 'text-red-600' : 'text-slate-400'
+                              }`}>
                                 {tendencia}
-                                <span className="text-xs">
-                                  {tendencia === '↑' ? '+2%' : tendencia === '↓' ? '-3%' : '0%'}
-                                </span>
+                                {esTendencia && item.valores.filter(v => v !== null).length >= 2 && (() => {
+                                  const vals = item.valores.filter(v => v !== null);
+                                  const diff = (vals[vals.length-1] - vals[vals.length-2]).toFixed(1);
+                                  return <span className="text-xs">{diff > 0 ? `+${diff}` : diff}%</span>;
+                                })()}
                               </span>
                             </td>
                             <td className="p-4 text-center">
                               <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${
-                                idx < 2 ? 'bg-emerald-100 text-emerald-600' : 
-                                idx === 2 ? 'bg-amber-100 text-amber-600' : 
-                                'bg-red-100 text-red-600'
+                                (esTendencia ? item.estatus : idx < 2 ? 'CUMPLE' : idx === 2 ? 'DESARROLLO' : 'ATENCION') === 'CUMPLE'
+                                  ? 'bg-emerald-100 text-emerald-600'
+                                  : (esTendencia ? item.estatus : 'DESARROLLO') === 'DESARROLLO'
+                                  ? 'bg-amber-100 text-amber-600'
+                                  : 'bg-red-100 text-red-600'
                               }`}>
-                                {idx < 2 ? '🟢 Cumple' : idx === 2 ? '🟡 En desarrollo' : '🔴 Atención'}
+                                {(esTendencia ? item.estatus : idx < 2 ? 'CUMPLE' : 'DESARROLLO') === 'CUMPLE'
+                                  ? '🟢 Cumple'
+                                  : (esTendencia ? item.estatus : 'DESARROLLO') === 'DESARROLLO'
+                                  ? '🟡 En desarrollo' : '🔴 Atención'}
                               </span>
                             </td>
                           </tr>
@@ -652,34 +685,56 @@ export default function Dashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {agendamientoResumen.map((item, idx) => {
-                        const tendencia = getTendenciaIcon(item.indicador);
-                        const v = parseFloat(item.valor);
-                        const fmt = (n) => isNaN(n) ? '-' : `${n}%`;
+                      {(tendenciasAgen.length > 0 ? tendenciasAgen : agendamientoResumen).map((item, idx) => {
+                        const esTendencia = tendenciasAgen.length > 0;
+                        const tendencia = esTendencia
+                          ? (item.tendencia === 'up' ? '↑' : item.tendencia === 'down' ? '↓' : '→')
+                          : getTendenciaIcon(item.indicador);
+                        const fmt = (n) => n === null || n === undefined ? '-' : `${parseFloat(n).toFixed(1)}%`;
                         return (
                           <tr key={idx} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
                             <td className="p-4 text-sm font-medium text-slate-800 whitespace-nowrap">{item.indicador}</td>
                             <td className="p-4 text-center text-sm font-bold text-slate-600">{item.meta}</td>
-                            <td className="p-4 text-center text-sm font-mono">{fmt(v)}</td>
-                            <td className="p-4 text-center text-sm font-mono">{fmt(isNaN(v) ? NaN : Math.round(v * 1.01))}</td>
-                            <td className="p-4 text-center text-sm font-mono">{fmt(isNaN(v) ? NaN : Math.round(v * 1.02))}</td>
-                            <td className="p-4 text-center text-sm font-mono">{fmt(isNaN(v) ? NaN : Math.round(v * 0.99))}</td>
-                            <td className="p-4 text-center text-sm font-mono">{fmt(v)}</td>
+                            {esTendencia ? (
+                              MESES_TABLA.slice(0, 5).map((mes, mi) => (
+                                <td key={mes} className="p-4 text-center text-sm font-mono">
+                                  {fmt(item.valores[mi])}
+                                </td>
+                              ))
+                            ) : (
+                              <>
+                                <td className="p-4 text-center text-sm font-mono">{fmt(parseFloat(item.valor))}</td>
+                                <td className="p-4 text-center text-sm font-mono text-slate-300">-</td>
+                                <td className="p-4 text-center text-sm font-mono text-slate-300">-</td>
+                                <td className="p-4 text-center text-sm font-mono text-slate-300">-</td>
+                                <td className="p-4 text-center text-sm font-mono text-slate-300">-</td>
+                              </>
+                            )}
                             <td className="p-4 text-center">
-                              <span className={`inline-flex items-center gap-1 text-sm ${getTendenciaColor(tendencia)}`}>
+                              <span className={`inline-flex items-center gap-1 text-sm ${
+                                tendencia === '↑' ? 'text-emerald-600' :
+                                tendencia === '↓' ? 'text-red-600' : 'text-slate-400'
+                              }`}>
                                 {tendencia}
-                                <span className="text-xs">
-                                  {tendencia === '↑' ? '+1%' : tendencia === '↓' ? '-2%' : '0%'}
-                                </span>
+                                {esTendencia && item.valores.filter(v => v !== null).length >= 2 && (() => {
+                                  const vals = item.valores.filter(v => v !== null);
+                                  const diff = (vals[vals.length-1] - vals[vals.length-2]).toFixed(1);
+                                  return <span className="text-xs">{diff > 0 ? `+${diff}` : diff}%</span>;
+                                })()}
                               </span>
                             </td>
                             <td className="p-4 text-center">
                               <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${
-                                idx < 3 ? 'bg-emerald-100 text-emerald-600' : 
-                                idx === 3 ? 'bg-amber-100 text-amber-600' : 
-                                'bg-red-100 text-red-600'
+                                (esTendencia ? item.estatus : idx < 3 ? 'CUMPLE' : idx === 3 ? 'DESARROLLO' : 'ATENCION') === 'CUMPLE'
+                                  ? 'bg-emerald-100 text-emerald-600'
+                                  : (esTendencia ? item.estatus : 'DESARROLLO') === 'DESARROLLO'
+                                  ? 'bg-amber-100 text-amber-600'
+                                  : 'bg-red-100 text-red-600'
                               }`}>
-                                {idx < 3 ? '🟢 Cumple' : idx === 3 ? '🟡 En desarrollo' : '🔴 Atención'}
+                                {(esTendencia ? item.estatus : idx < 3 ? 'CUMPLE' : 'DESARROLLO') === 'CUMPLE'
+                                  ? '🟢 Cumple'
+                                  : (esTendencia ? item.estatus : 'DESARROLLO') === 'DESARROLLO'
+                                  ? '🟡 En desarrollo' : '🔴 Atención'}
                               </span>
                             </td>
                           </tr>
