@@ -1,5 +1,16 @@
 import { getSheetData } from '../../../lib/googleSheets';
 
+// Función para convertir fecha DD/MM/YYYY a objeto Date
+function parseFecha(fechaStr) {
+  if (!fechaStr) return null;
+  const partes = fechaStr.split('/');
+  if (partes.length === 3) {
+    const [dia, mes, anio] = partes;
+    return new Date(parseInt(anio), parseInt(mes) - 1, parseInt(dia));
+  }
+  return null;
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ message: 'Method not allowed' });
@@ -8,21 +19,20 @@ export default async function handler(req, res) {
   try {
     const { fechaInicio, fechaFin } = req.query;
     
-    // Leer TODAS las columnas de la A a la J
     const data = await getSheetData('COORDINACION_DETALLE!A2:J');
     
-    // Mapeo correcto según tu estructura
     let datos = data.map(row => ({
-      fecha: row[0],                // A
-      mes: row[1],                   // B
-      colaborador: row[2],            // C
-      unidad: row[3],                 // D
-      ftr: row[4] ? parseFloat(row[4]) : 0,     // E
-      tiempoPromedio: row[5] ? parseFloat(row[5]) : 0, // F
-      cantidadRegistros: row[6] ? parseInt(row[6]) : 0, // G
-      noConformidades: row[7] ? parseInt(row[7]) : 0,   // H
-      snc: row[8] ? parseInt(row[8]) : 0,               // I
-      semaforo: row[9] || 'SIN DEFINIR'                 // J
+      fecha: row[0],                // string original
+      fechaObj: parseFecha(row[0]),  // para filtrar
+      mes: row[1],
+      colaborador: row[2],
+      unidad: row[3],
+      ftr: row[4] ? parseFloat(row[4]) : 0,
+      tiempoPromedio: row[5] ? parseFloat(row[5]) : 0,
+      cantidadRegistros: row[6] ? parseInt(row[6]) : 0,
+      noConformidades: row[7] ? parseInt(row[7]) : 0,
+      snc: row[8] ? parseInt(row[8]) : 0,
+      semaforo: row[9] || 'SIN DEFINIR'
     }));
 
     // Filtrar por fecha si se proporciona
@@ -30,13 +40,14 @@ export default async function handler(req, res) {
       const inicio = new Date(fechaInicio);
       const fin = new Date(fechaFin);
       datos = datos.filter(d => {
-        if (!d.fecha) return false;
-        const fechaD = new Date(d.fecha);
-        return fechaD >= inicio && fechaD <= fin;
+        if (!d.fechaObj) return false;
+        return d.fechaObj >= inicio && d.fechaObj <= fin;
       });
     }
 
-    // Log para debugging (opcional)
+    // Eliminar el campo auxiliar antes de enviar
+    datos = datos.map(({ fechaObj, ...rest }) => rest);
+
     console.log(`Coordinación: ${datos.length} registros encontrados`);
 
     res.status(200).json(datos);
