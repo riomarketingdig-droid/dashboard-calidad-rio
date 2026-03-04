@@ -6,46 +6,25 @@ import SkeletonTable from '../components/ui/SkeletonTable';
 import EmptyState from '../components/ui/EmptyState';
 import InfoTooltip from '../components/ui/InfoTooltip';
 import FichaTecnica from '../components/ui/FichaTecnica';
-import SatisfaccionFicha from '../components/ui/SatisfaccionFicha';
 
 export default function Dashboard() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('gerencial');
-  
-  // ESTADOS PRINCIPALES
   const [gerencialData, setGerencialData] = useState([]);
   const [coordinacionData, setCoordinacionData] = useState([]);
   const [agendamientoData, setAgendamientoData] = useState([]);
-  const [satisfaccionData, setSatisfaccionData] = useState([]);
-  const [visionGerencialData, setVisionGerencialData] = useState([]);
   const [tendenciasData, setTendenciasData] = useState([]);
   const [recomendaciones, setRecomendaciones] = useState([]);
   const [colaboradores, setColaboradores] = useState([]);
   const [seguimientos, setSeguimientos] = useState({});
-  const [kpisData, setKpisData] = useState(null);
-  
-  // ESTADOS DE CARGA
   const [loading, setLoading] = useState(true);
-  
-  // ESTADOS DE FILTROS
   const [filtroNivel, setFiltroNivel] = useState('TODOS');
-  const [filtroArea, setFiltroArea] = useState('TODAS');
   const [filtroTierCoordinacion, setFiltroTierCoordinacion] = useState(null);
-  const [filtrosSatisfaccion, setFiltrosSatisfaccion] = useState({
-    sucursal: 'TODAS',
-    proceso: 'TODOS',
-    status: 'TODOS',
-    mes: 'TODOS',
-    semana: 'TODAS'
-  });
-  
-  // ESTADOS DE UI
-  const [panelAbierto, setPanelAbierto] = useState(null);
-  const [notasForm, setNotasForm] = useState({});
+  const [panelAbierto, setPanelAbierto] = useState(null); // ID de rec con panel abierto
+  const [notasForm, setNotasForm] = useState({}); // { [recId]: { notas, acuerdos, fechaCompromiso } }
   const [guardando, setGuardando] = useState(null);
   const [enviando, setEnviando] = useState(null);
-  const [fichaColaborador, setFichaColaborador] = useState(null);
-  const [analisisIA, setAnalisisIA] = useState({});
+  const [fichaColaborador, setFichaColaborador] = useState(null); // { datos, tipo }
   const [recomendacionesCompletadas, setRecomendacionesCompletadas] = useState(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -55,16 +34,16 @@ export default function Dashboard() {
     }
     return [];
   });
-  
   const [periodo, setPeriodo] = useState({
     tipo: 'year',
-    valor: 'Año Completo',
-    año: 2025
+    valor: 'AÃ±o Completo',
+    aÃ±o: 2025
   });
 
-  // UTILIDADES
-  const getRangoDeFechas = (periodo) => {
+  // Calcular rango de fechas segÃºn el perÃ­odo seleccionado
+    const getRangoDeFechas = (periodo) => {
     const ano = periodo.ano || periodo.año || new Date().getFullYear();
+    
     if (periodo.tipo === 'year') {
       return { fechaInicio: `${ano}-01-01`, fechaFin: `${ano}-12-31` };
     }
@@ -76,44 +55,50 @@ export default function Dashboard() {
       return { fechaInicio: fmt(hace52), fechaFin: fmt(hoy) };
     }
     if (periodo.tipo === 'month') {
-      const meses = { 'Enero':1,'Febrero':2,'Marzo':3,'Abril':4,'Mayo':5,'Junio':6,
-                      'Julio':7,'Agosto':8,'Septiembre':9,'Octubre':10,'Noviembre':11,'Diciembre':12 };
-      const mes = meses[periodo.valor] || 1;
-      const ultimo = new Date(ano, mes, 0).getDate();
-      const mm = String(mes).padStart(2,'0');
-      return { fechaInicio: `${ano}-${mm}-01`, fechaFin: `${ano}-${mm}-${ultimo}` };
+      const meses = { 
+        'Enero':0,'Febrero':1,'Marzo':2,'Abril':3,'Mayo':4,'Junio':5,
+        'Julio':6,'Agosto':7,'Septiembre':8,'Octubre':9,'Noviembre':10,'Diciembre':11 
+      };
+      const mesIndex = meses[periodo.valor];
+      if (mesIndex === undefined) {
+        return { fechaInicio: `${ano}-01-01`, fechaFin: `${ano}-12-31` };
+      }
+      const primerDia = new Date(ano, mesIndex, 1);
+      const ultimoDia = new Date(ano, mesIndex + 1, 0);
+      const fmt = (d) => d.toISOString().split('T')[0];
+      return { fechaInicio: fmt(primerDia), fechaFin: fmt(ultimoDia) };
     }
     if (periodo.tipo === 'quarter') {
       const trimestres = {
-        'Q1 (Ene-Mar)':[1,3], 'Q2 (Abr-Jun)':[4,6],
-        'Q3 (Jul-Sep)':[7,9], 'Q4 (Oct-Dic)':[10,12],
-        'Q1':[1,3], 'Q2':[4,6], 'Q3':[7,9], 'Q4':[10,12]
+        'Q1 (Ene-Mar)':[0,2], 'Q2 (Abr-Jun)':[3,5],
+        'Q3 (Jul-Sep)':[6,8], 'Q4 (Oct-Dic)':[9,11],
+        'Q1':[0,2], 'Q2':[3,5], 'Q3':[6,8], 'Q4':[9,11]
       };
-      const [mesInicio, mesFin] = trimestres[periodo.valor] || [1,3];
-      const ultimo = new Date(ano, mesFin, 0).getDate();
-      const mmI = String(mesInicio).padStart(2,'0');
-      const mmF = String(mesFin).padStart(2,'0');
-      return { fechaInicio: `${ano}-${mmI}-01`, fechaFin: `${ano}-${mmF}-${ultimo}` };
+      const [mesInicio, mesFin] = trimestres[periodo.valor] || [0,2];
+      const primerDia = new Date(ano, mesInicio, 1);
+      const ultimoDia = new Date(ano, mesFin + 1, 0);
+      const fmt = (d) => d.toISOString().split('T')[0];
+      return { fechaInicio: fmt(primerDia), fechaFin: fmt(ultimoDia) };
     }
     if (periodo.tipo === 'semester') {
-      const semestres = { 'S1 (Ene-Jun)': [1, 6], 'S2 (Jul-Dic)': [7, 12] };
-      const [mesInicio, mesFin] = semestres[periodo.valor] || [1, 6];
-      const ultimo = new Date(ano, mesFin, 0).getDate();
-      const mmI = String(mesInicio).padStart(2,'0');
-      const mmF = String(mesFin).padStart(2,'0');
-      return { fechaInicio: `${ano}-${mmI}-01`, fechaFin: `${ano}-${mmF}-${ultimo}` };
+      const semestres = { 'S1 (Ene-Jun)': [0,5], 'S2 (Jul-Dic)': [6,11] };
+      const [mesInicio, mesFin] = semestres[periodo.valor] || [0,5];
+      const primerDia = new Date(ano, mesInicio, 1);
+      const ultimoDia = new Date(ano, mesFin + 1, 0);
+      const fmt = (d) => d.toISOString().split('T')[0];
+      return { fechaInicio: fmt(primerDia), fechaFin: fmt(ultimoDia) };
     }
     if (periodo.tipo === 'bimonth') {
       const bimestres = {
-        'B1 (Ene-Feb)': [1, 2], 'B2 (Mar-Abr)': [3, 4],
-        'B3 (May-Jun)': [5, 6], 'B4 (Jul-Ago)': [7, 8],
-        'B5 (Sep-Oct)': [9, 10], 'B6 (Nov-Dic)': [11, 12]
+        'B1 (Ene-Feb)': [0,1], 'B2 (Mar-Abr)': [2,3],
+        'B3 (May-Jun)': [4,5], 'B4 (Jul-Ago)': [6,7],
+        'B5 (Sep-Oct)': [8,9], 'B6 (Nov-Dic)': [10,11]
       };
-      const [mesInicio, mesFin] = bimestres[periodo.valor] || [1, 2];
-      const ultimo = new Date(ano, mesFin, 0).getDate();
-      const mmI = String(mesInicio).padStart(2,'0');
-      const mmF = String(mesFin).padStart(2,'0');
-      return { fechaInicio: `${ano}-${mmI}-01`, fechaFin: `${ano}-${mmF}-${ultimo}` };
+      const [mesInicio, mesFin] = bimestres[periodo.valor] || [0,1];
+      const primerDia = new Date(ano, mesInicio, 1);
+      const ultimoDia = new Date(ano, mesFin + 1, 0);
+      const fmt = (d) => d.toISOString().split('T')[0];
+      return { fechaInicio: fmt(primerDia), fechaFin: fmt(ultimoDia) };
     }
     if (periodo.tipo === 'week') {
       const semana = parseInt(periodo.valor) || 1;
@@ -126,7 +111,7 @@ export default function Dashboard() {
     return { fechaInicio: `${ano}-01-01`, fechaFin: `${ano}-12-31` };
   };
 
-  // CARGA DE DATOS PRINCIPAL
+  // FunciÃ³n para cargar todos los datos
   const cargarDatos = useCallback(async () => {
     setLoading(true);
     try {
@@ -136,7 +121,8 @@ export default function Dashboard() {
       if (fechaFin) params.append('fechaFin', fechaFin);
       const qs = params.toString() ? `?${params.toString()}` : '';
 
-      const ano = periodo.ano || periodo.año || new Date().getFullYear();
+      // ParÃ¡metros para gerencial (usa mes/aÃ±o/semana)
+      const ano = periodo.ano || periodo.aÃ±o || new Date().getFullYear();
       const gerencialParams = new URLSearchParams();
       gerencialParams.append('ano', ano);
       if (periodo.tipo === 'month') gerencialParams.append('mes', periodo.valor);
@@ -144,72 +130,18 @@ export default function Dashboard() {
       if (periodo.tipo === 'week') gerencialParams.append('semana', periodo.valor);
       const gerencialQs = `?${gerencialParams.toString()}`;
 
-      const [
-        gerencial, 
-        coordinacion, 
-        agendamiento, 
-        recs, 
-        tendencias,
-        satisfaccion,
-        kpis,
-        cols
-      ] = await Promise.all([
+      const [gerencial, coordinacion, agendamiento, recs, tendencias] = await Promise.all([
         fetch(`/api/datos/gerencial${gerencialQs}`).then(res => res.json()),
         fetch(`/api/datos/coordinacion${qs}`).then(res => res.json()),
         fetch(`/api/datos/agendamiento${qs}`).then(res => res.json()),
         fetch('/api/recomendaciones').then(res => res.json()),
         fetch(`/api/datos/tendencias?ano=${ano}`).then(res => res.json()),
-        fetch(`/api/datos/satisfaccion${qs}`).then(res => res.json()),
-        fetch('/api/datos/kpis').then(res => res.json()),
-        fetch('/api/datos/colaboradores').then(res => res.json())
       ]);
-
       setGerencialData(Array.isArray(gerencial) ? gerencial : []);
       setCoordinacionData(Array.isArray(coordinacion) ? coordinacion : []);
       setAgendamientoData(Array.isArray(agendamiento) ? agendamiento : []);
       setRecomendaciones(Array.isArray(recs) ? recs : []);
       setTendenciasData(Array.isArray(tendencias) ? tendencias : []);
-      setSatisfaccionData(Array.isArray(satisfaccion) ? satisfaccion : []);
-      setKpisData(kpis);
-      setColaboradores(Array.isArray(cols) ? cols : []);
-
-      // ANÁLISIS IA AVANZADO: Detectar patrones en quejas
-      if (Array.isArray(satisfaccion) && satisfaccion.length > 0) {
-        const analisis = {};
-        
-        const sucursales = {};
-        satisfaccion.forEach(q => {
-          if (!sucursales[q.sucursal]) sucursales[q.sucursal] = { total: 0, abiertas: 0 };
-          sucursales[q.sucursal].total++;
-          if (q.status !== 'CERRADA') sucursales[q.sucursal].abiertas++;
-        });
-        
-        Object.entries(sucursales).forEach(([suc, data]) => {
-          if (data.abiertas / data.total > 0.3) {
-            analisis[`alerta-${suc}`] = {
-              nivel: 'ALTO',
-              mensaje: `${suc} tiene ${data.abiertas} quejas abiertas (${Math.round(data.abiertas/data.total*100)}% del total)`,
-              sugerencia: 'Priorizar revisión de procesos en esta sucursal'
-            };
-          }
-        });
-
-        const motivos = {};
-        satisfaccion.forEach(q => {
-          motivos[q.motivo] = (motivos[q.motivo] || 0) + 1;
-        });
-        const topMotivos = Object.entries(motivos)
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 3);
-        
-        analisis.topMotivos = topMotivos.map(([motivo, count]) => ({
-          motivo,
-          count,
-          sugerencia: `Principal causa de quejas: ${count} casos. Revisar procedimiento asociado.`
-        }));
-
-        setAnalisisIA(analisis);
-      }
     } catch (error) {
       console.error('Error cargando datos:', error);
     } finally {
@@ -217,17 +149,27 @@ export default function Dashboard() {
     }
   }, [periodo]);
 
-  // EFECTOS
+  // Escuchar evento de refresh
   useEffect(() => {
     const handleRefresh = () => cargarDatos();
     window.addEventListener('refresh-data', handleRefresh);
     return () => window.removeEventListener('refresh-data', handleRefresh);
   }, [cargarDatos]);
 
+  // Cargar datos al inicio y cuando cambie el perÃ­odo
   useEffect(() => {
     cargarDatos();
   }, [cargarDatos]);
 
+  // Cargar colaboradores (independiente del perÃ­odo)
+  useEffect(() => {
+    fetch('/api/datos/colaboradores')
+      .then(r => r.json())
+      .then(data => setColaboradores(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, []);
+
+  // Cargar seguimientos existentes
   useEffect(() => {
     fetch('/api/seguimiento')
       .then(r => r.json())
@@ -244,10 +186,11 @@ export default function Dashboard() {
       .catch(() => {});
   }, []);
 
-  // HELPERS
+  // Helpers de colaboradores
   const getColaborador = (nombre) =>
-    colaboradores.find(c => c.nombre?.toLowerCase().includes((nombre || '').toLowerCase())) || null;
+    colaboradores.find(c => c.nombre.toLowerCase().includes((nombre || '').toLowerCase())) || null;
 
+  // Guardar notas/acuerdos en Sheets
   const guardarNotas = async (rec) => {
     const form = notasForm[rec.id] || {};
     if (!form.notas && !form.acuerdos) return;
@@ -286,6 +229,7 @@ export default function Dashboard() {
     }
   };
 
+  // Generar constancia PDF de retroalimentaciÃ³n
   const generarPDF = async (rec) => {
     const form = notasForm[rec.id] || {};
     const colab = getColaborador(rec.agente);
@@ -312,13 +256,18 @@ export default function Dashboard() {
     }
   };
 
+  // FunciÃ³n para generar feedback con IA
   const generarFeedbackIA = async (recomendacion) => {
+    // Marcar como "generando"
     setRecomendaciones(prev => prev.map(r => 
       r.id === recomendacion.id ? { ...r, generandoFeedback: true } : r
     ));
 
     try {
+      // Extraer valor numÃ©rico de la mÃ©trica
       const valorNumerico = parseFloat(recomendacion.metrica) || 0;
+      
+      // Determinar tendencia (podrÃ­amos mejorarla despuÃ©s con datos reales)
       const tendencia = Math.random() > 0.5 ? 'up' : 'down';
 
       const response = await fetch('/api/feedback-ia', {
@@ -334,17 +283,23 @@ export default function Dashboard() {
         })
       });
 
-      if (!response.ok) throw new Error('Error en la respuesta de la API');
+      if (!response.ok) {
+        throw new Error('Error en la respuesta de la API');
+      }
 
       const data = await response.json();
       
+      // Actualizar la recomendaciÃ³n con el feedback
       setRecomendaciones(prev => prev.map(r => 
         r.id === recomendacion.id ? { ...r, feedback: data.feedback, generandoFeedback: false } : r
       ));
 
+      // Hacer scroll suave hasta la recomendaciÃ³n actualizada
       setTimeout(() => {
         const elemento = document.getElementById(`recomendacion-${recomendacion.id}`);
-        if (elemento) elemento.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (elemento) {
+          elemento.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
       }, 100);
     } catch (error) {
       console.error('Error:', error);
@@ -355,6 +310,7 @@ export default function Dashboard() {
     }
   };
 
+  // FunciÃ³n para marcar recomendaciÃ³n como completada (persiste en localStorage)
   const marcarCompletada = (id) => {
     setRecomendacionesCompletadas(prev => {
       const nuevas = prev.includes(id) ? prev.filter(r => r !== id) : [...prev, id];
@@ -363,45 +319,20 @@ export default function Dashboard() {
     });
   };
 
-  // FILTROS
-  const recomendacionesFiltradas = recomendaciones.filter(r => {
-    if (filtroNivel !== 'TODOS' && r.nivel !== filtroNivel) return false;
-    if (filtroArea !== 'TODAS' && r.area !== filtroArea) return false;
-    return true;
-  });
+  // Filtrar recomendaciones por nivel
+  const recomendacionesFiltradas = filtroNivel === 'TODOS' 
+    ? recomendaciones 
+    : recomendaciones.filter(r => r.nivel === filtroNivel);
 
+  // Filtrar coordinaciÃ³n por tier
   const coordinacionFiltrada = filtroTierCoordinacion 
     ? coordinacionData.filter(c => c.semaforo === filtroTierCoordinacion)
     : coordinacionData;
 
-  const satisfaccionFiltrada = satisfaccionData.filter(q => {
-    if (filtrosSatisfaccion.sucursal !== 'TODAS' && q.sucursal !== filtrosSatisfaccion.sucursal) return false;
-    if (filtrosSatisfaccion.proceso !== 'TODOS' && q.proceso !== filtrosSatisfaccion.proceso) return false;
-    if (filtrosSatisfaccion.status !== 'TODOS' && q.status !== filtrosSatisfaccion.status) return false;
-    if (filtrosSatisfaccion.mes !== 'TODOS' && q.mes !== filtrosSatisfaccion.mes) return false;
-    if (filtrosSatisfaccion.semana !== 'TODAS' && q.semana !== parseInt(filtrosSatisfaccion.semana)) return false;
-    return true;
-  });
-
-  // MÉTRICAS PARA SATISFACCIÓN (usando kpisData)
-  const metricasSatisfaccion = {
-    npsPromedio: kpisData?.satisfaccion?.nps || '8.5',
-    felicitaciones: kpisData?.satisfaccion?.felicitaciones || '92',
-    quejasAbiertas: kpisData?.satisfaccion?.quejasAbiertas || 0,
-    tiempoPromedioCierre: kpisData?.satisfaccion?.tiempoCierre || 0
-  };
-
-  // OPCIONES PARA FILTROS
-  const opcionesSucursales = ['TODAS', ...new Set(satisfaccionData.map(q => q.sucursal).filter(Boolean))];
-  const opcionesProcesos = ['TODOS', ...new Set(satisfaccionData.map(q => q.proceso).filter(Boolean))];
-  const opcionesStatus = ['TODOS', ...new Set(satisfaccionData.map(q => q.status).filter(Boolean))];
-  const opcionesMeses = ['TODOS', ...new Set(satisfaccionData.map(q => q.mes).filter(Boolean))];
-  const opcionesSemanas = ['TODAS', ...new Set(satisfaccionData.map(q => q.semana).filter(Boolean))];
-
-  // AGRUPACIONES PARA VISTAS
-  const coordinacionResumen = gerencialData.filter(d => d.proceso === 'Coordinación');
+  // Agrupar datos para las vistas
+  const coordinacionResumen = gerencialData.filter(d => d.proceso === 'CoordinaciÃ³n');
   const agendamientoResumen = gerencialData.filter(d => d.proceso === 'Agendamiento');
-  const tendenciasCoord = tendenciasData.filter(d => d.proceso === 'Coordinación');
+  const tendenciasCoord = tendenciasData.filter(d => d.proceso === 'CoordinaciÃ³n');
   const tendenciasAgen = tendenciasData.filter(d => d.proceso === 'Agendamiento');
   const MESES_TABLA = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
@@ -422,14 +353,12 @@ export default function Dashboard() {
       '# Servicio no conformes': 'up',
     };
     const tendencia = tendencias[indicador] || 'neutral';
-    return tendencia === 'up' ? '↑' : tendencia === 'down' ? '↓' : '→';
+    return tendencia === 'up' ? 'â†‘' : tendencia === 'down' ? 'â†“' : 'â†’';
   };
 
   const getTendenciaColor = (tendencia) => {
     return tendencia === 'up' ? 'text-emerald-600' : tendencia === 'down' ? 'text-red-600' : 'text-slate-400';
   };
-
-  const seguimientosTodos = Object.values(seguimientos).flat();
 
   if (loading) {
     return (
@@ -443,9 +372,12 @@ export default function Dashboard() {
     );
   }
 
+  // Aplanar todos los seguimientos para la ficha tÃ©cnica
+  const seguimientosTodos = Object.values(seguimientos).flat();
+
   return (
     <div className="min-h-screen bg-[#f8fafc] font-sans text-slate-900">
-      {/* FICHA TÉCNICA MODAL */}
+      {/* FICHA TÃ‰CNICA MODAL */}
       {fichaColaborador && (
         <FichaTecnica
           colaborador={fichaColaborador.datos}
@@ -455,7 +387,6 @@ export default function Dashboard() {
           onClose={() => setFichaColaborador(null)}
         />
       )}
-
       {/* STICKY HEADER */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-slate-100 shadow-sm">
         <div className="p-4 md:p-6">
@@ -467,11 +398,10 @@ export default function Dashboard() {
                   Tablero de Control
                 </h1>
                 <p className="text-xs text-slate-500 font-bold mt-1 tracking-widest uppercase">
-                  {activeTab === 'gerencial' ? 'Visión Gerencial' : 
-                   activeTab === 'coordinacion' ? 'Detalle Coordinación' :
+                  {activeTab === 'gerencial' ? 'VisiÃ³n Gerencial' : 
+                   activeTab === 'coordinacion' ? 'Detalle CoordinaciÃ³n' :
                    activeTab === 'agendamiento' ? 'Detalle Agendamiento' :
-                   activeTab === 'satisfaccion' ? 'Satisfacción Cliente' :
-                   'Plan de Acción'}
+                   'Plan de AcciÃ³n'}
                 </p>
               </div>
             </div>
@@ -487,7 +417,7 @@ export default function Dashboard() {
             </div>
           </div>
           
-          {/* Period Selector */}
+          {/* Period Selector (solo en vistas gerenciales) */}
           {activeTab !== 'planaccion' && (
             <div className="mt-4">
               <PeriodSelector periodo={periodo} setPeriodo={setPeriodo} />
@@ -497,11 +427,10 @@ export default function Dashboard() {
           {/* TABS */}
           <nav className="flex space-x-6 mt-4 overflow-x-auto pb-2" aria-label="Tabs">
             {[
-              { id: 'gerencial', label: 'VISIÓN GERENCIAL', icon: '📊' },
-              { id: 'coordinacion', label: 'COORDINACIÓN', icon: '✓' },
-              { id: 'agendamiento', label: 'AGENDAMIENTO', icon: '📅' },
-              { id: 'satisfaccion', label: 'SATISFACCIÓN', icon: '😊' },
-              { id: 'planaccion', label: 'PLAN DE ACCIÓN', icon: '🎯' }
+              { id: 'gerencial', label: 'VISIÃ“N GERENCIAL', icon: 'ðŸ“Š' },
+              { id: 'coordinacion', label: 'COORDINACIÃ“N', icon: 'âœ“' },
+              { id: 'agendamiento', label: 'AGENDAMIENTO', icon: 'ðŸ“…' },
+              { id: 'planaccion', label: 'PLAN DE ACCIÃ“N', icon: 'ðŸŽ¯' }
             ].map(tab => (
               <button
                 key={tab.id}
@@ -519,16 +448,15 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* MAIN CONTENT */}
+      {/* MAIN CONTENT â€” sin max-w para evitar tablas cortadas */}
       <main className="p-4 md:p-6">
-        {/* VISTA GERENCIAL */}
         {activeTab === 'gerencial' && (
           <>
-            {/* TARJETAS COORDINACIÓN */}
+            {/* TARJETAS DE COORDINACIÃ“N */}
             <div className="mb-8">
               <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                 <span className="w-1 h-4 bg-[#0066CC] rounded-full"></span>
-                COORDINACIÓN
+                COORDINACIÃ“N
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {coordinacionResumen.length === 0 ? (
@@ -565,7 +493,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* TARJETAS AGENDAMIENTO */}
+            {/* TARJETAS DE AGENDAMIENTO */}
             <div className="mb-8">
               <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                 <span className="w-1 h-4 bg-[#0066CC] rounded-full"></span>
@@ -601,11 +529,11 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* TABLA COORDINACIÓN */}
+            {/* TABLA COORDINACIÃ“N */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-8">
               <div className="px-6 py-4 bg-slate-50 border-b border-slate-100">
-                <h3 className="font-bold text-slate-800">COORDINACIÓN - Seguimiento Mensual</h3>
-                <p className="text-xs text-slate-400 mt-1">Meta Efectividad: 98% | Meta Tiempo 7min: 85% | Reducción No Conformidades: 30%</p>
+                <h3 className="font-bold text-slate-800">COORDINACIÃ“N - Seguimiento Mensual</h3>
+                <p className="text-xs text-slate-400 mt-1">Meta Efectividad: 98% | Meta Tiempo 7min: 85% | ReducciÃ³n No Conformidades: 30%</p>
               </div>
               <div className="overflow-x-auto">
                 {coordinacionResumen.length === 0 ? (
@@ -626,7 +554,7 @@ export default function Dashboard() {
                         <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">
                           <div className="flex items-center justify-center gap-1">
                             Tendencia
-                            <InfoTooltip content="Comparación vs período anterior. ↑ mejora, ↓ empeora, → estable" />
+                            <InfoTooltip content="ComparaciÃ³n vs perÃ­odo anterior. â†‘ mejora, â†“ empeora, â†’ estable" />
                           </div>
                         </th>
                         <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">
@@ -634,9 +562,9 @@ export default function Dashboard() {
                             Estatus
                             <InfoTooltip content={
                               <div>
-                                <p><span className="text-emerald-400">🟢 Cumple:</span> ≥ meta</p>
-                                <p><span className="text-amber-400">🟡 En desarrollo:</span> 80-99% de meta</p>
-                                <p><span className="text-red-400">🔴 Atención:</span> &lt;80% de meta</p>
+                                <p><span className="text-emerald-400">ðŸŸ¢ Cumple:</span> â‰¥ meta</p>
+                                <p><span className="text-amber-400">ðŸŸ¡ En desarrollo:</span> 80-99% de meta</p>
+                                <p><span className="text-red-400">ðŸ”´ AtenciÃ³n:</span> &lt;80% de meta</p>
                               </div>
                             } />
                           </div>
@@ -647,9 +575,14 @@ export default function Dashboard() {
                       {(tendenciasCoord.length > 0 ? tendenciasCoord : coordinacionResumen).map((item, idx) => {
                         const esTendencia = tendenciasCoord.length > 0;
                         const tendencia = esTendencia
-                          ? (item.tendencia === 'up' ? '↑' : item.tendencia === 'down' ? '↓' : '→')
+                          ? (item.tendencia === 'up' ? 'â†‘' : item.tendencia === 'down' ? 'â†“' : 'â†’')
                           : getTendenciaIcon(item.indicador);
                         const fmt = (n) => n === null || n === undefined ? '-' : `${parseFloat(n).toFixed(1)}%`;
+                        // Mostrar solo los 5 meses mÃ¡s recientes con datos
+                        const mesesConDatos = esTendencia
+                          ? MESES_TABLA.filter((_, i) => item.valores[i] !== null)
+                          : ['Ene','Feb','Mar','Abr','May'];
+                        const ultimos5 = mesesConDatos.slice(-5);
                         return (
                           <tr key={idx} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
                             <td className="p-4 text-sm font-medium text-slate-800 whitespace-nowrap">{item.indicador}</td>
@@ -671,8 +604,8 @@ export default function Dashboard() {
                             )}
                             <td className="p-4 text-center">
                               <span className={`inline-flex items-center gap-1 text-sm ${
-                                tendencia === '↑' ? 'text-emerald-600' :
-                                tendencia === '↓' ? 'text-red-600' : 'text-slate-400'
+                                tendencia === 'â†‘' ? 'text-emerald-600' :
+                                tendencia === 'â†“' ? 'text-red-600' : 'text-slate-400'
                               }`}>
                                 {tendencia}
                                 {esTendencia && item.valores.filter(v => v !== null).length >= 2 && (() => {
@@ -691,9 +624,9 @@ export default function Dashboard() {
                                   : 'bg-red-100 text-red-600'
                               }`}>
                                 {(esTendencia ? item.estatus : idx < 2 ? 'CUMPLE' : 'DESARROLLO') === 'CUMPLE'
-                                  ? '🟢 Cumple'
+                                  ? 'ðŸŸ¢ Cumple'
                                   : (esTendencia ? item.estatus : 'DESARROLLO') === 'DESARROLLO'
-                                  ? '🟡 En desarrollo' : '🔴 Atención'}
+                                  ? 'ðŸŸ¡ En desarrollo' : 'ðŸ”´ AtenciÃ³n'}
                               </span>
                             </td>
                           </tr>
@@ -709,7 +642,7 @@ export default function Dashboard() {
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
               <div className="px-6 py-4 bg-slate-50 border-b border-slate-100">
                 <h3 className="font-bold text-slate-800">AGENDAMIENTO - Seguimiento Mensual</h3>
-                <p className="text-xs text-slate-400 mt-1">Meta Oportunidades: 75% | Meta Cierres: ↓80% | Meta Conversión: 95%</p>
+                <p className="text-xs text-slate-400 mt-1">Meta Oportunidades: 75% | Meta Cierres: â†“80% | Meta ConversiÃ³n: 95%</p>
               </div>
               <div className="overflow-x-auto">
                 {agendamientoResumen.length === 0 ? (
@@ -730,7 +663,7 @@ export default function Dashboard() {
                         <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">
                           <div className="flex items-center justify-center gap-1">
                             Tendencia
-                            <InfoTooltip content="Comparación vs período anterior. ↑ mejora, ↓ empeora, → estable" />
+                            <InfoTooltip content="ComparaciÃ³n vs perÃ­odo anterior. â†‘ mejora, â†“ empeora, â†’ estable" />
                           </div>
                         </th>
                         <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">
@@ -738,9 +671,9 @@ export default function Dashboard() {
                             Estatus
                             <InfoTooltip content={
                               <div>
-                                <p><span className="text-emerald-400">🟢 Cumple:</span> ≥ meta</p>
-                                <p><span className="text-amber-400">🟡 En desarrollo:</span> 80-99% de meta</p>
-                                <p><span className="text-red-400">🔴 Atención:</span> &lt;80% de meta</p>
+                                <p><span className="text-emerald-400">ðŸŸ¢ Cumple:</span> â‰¥ meta</p>
+                                <p><span className="text-amber-400">ðŸŸ¡ En desarrollo:</span> 80-99% de meta</p>
+                                <p><span className="text-red-400">ðŸ”´ AtenciÃ³n:</span> &lt;80% de meta</p>
                               </div>
                             } />
                           </div>
@@ -751,7 +684,7 @@ export default function Dashboard() {
                       {(tendenciasAgen.length > 0 ? tendenciasAgen : agendamientoResumen).map((item, idx) => {
                         const esTendencia = tendenciasAgen.length > 0;
                         const tendencia = esTendencia
-                          ? (item.tendencia === 'up' ? '↑' : item.tendencia === 'down' ? '↓' : '→')
+                          ? (item.tendencia === 'up' ? 'â†‘' : item.tendencia === 'down' ? 'â†“' : 'â†’')
                           : getTendenciaIcon(item.indicador);
                         const fmt = (n) => n === null || n === undefined ? '-' : `${parseFloat(n).toFixed(1)}%`;
                         return (
@@ -775,8 +708,8 @@ export default function Dashboard() {
                             )}
                             <td className="p-4 text-center">
                               <span className={`inline-flex items-center gap-1 text-sm ${
-                                tendencia === '↑' ? 'text-emerald-600' :
-                                tendencia === '↓' ? 'text-red-600' : 'text-slate-400'
+                                tendencia === 'â†‘' ? 'text-emerald-600' :
+                                tendencia === 'â†“' ? 'text-red-600' : 'text-slate-400'
                               }`}>
                                 {tendencia}
                                 {esTendencia && item.valores.filter(v => v !== null).length >= 2 && (() => {
@@ -795,9 +728,9 @@ export default function Dashboard() {
                                   : 'bg-red-100 text-red-600'
                               }`}>
                                 {(esTendencia ? item.estatus : idx < 3 ? 'CUMPLE' : 'DESARROLLO') === 'CUMPLE'
-                                  ? '🟢 Cumple'
+                                  ? 'ðŸŸ¢ Cumple'
                                   : (esTendencia ? item.estatus : 'DESARROLLO') === 'DESARROLLO'
-                                  ? '🟡 En desarrollo' : '🔴 Atención'}
+                                  ? 'ðŸŸ¡ En desarrollo' : 'ðŸ”´ AtenciÃ³n'}
                               </span>
                             </td>
                           </tr>
@@ -811,20 +744,20 @@ export default function Dashboard() {
           </>
         )}
 
-        {/* VISTA COORDINACIÓN */}
         {activeTab === 'coordinacion' && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
             <div className="px-6 py-4 bg-slate-50 border-b border-slate-100">
-              <h3 className="font-bold text-slate-800">COORDINACIÓN - Detalle por Colaborador</h3>
-              <p className="text-xs text-slate-400 mt-1">Ritual diario obligatorio (10 minutos) - Revisar quién estuvo debajo de meta y acción correctiva inmediata</p>
+              <h3 className="font-bold text-slate-800">COORDINACIÃ“N - Detalle por Colaborador</h3>
+              <p className="text-xs text-slate-400 mt-1">Ritual diario obligatorio (10 minutos) - Revisar quiÃ©n estuvo debajo de meta y acciÃ³n correctiva inmediata</p>
             </div>
             
             <div className="p-4 bg-blue-50 border-b border-blue-100">
               <p className="text-xs text-blue-700">
-                <span className="font-bold">Regla de reincidencia:</span> 1 vez → retroalimentación | 2 veces → plan de mejora | 3 veces → incidencia formal
+                <span className="font-bold">Regla de reincidencia:</span> 1 vez â†’ retroalimentaciÃ³n | 2 veces â†’ plan de mejora | 3 veces â†’ incidencia formal
               </p>
             </div>
 
+            {/* Filtros rÃ¡pidos por semÃ¡foro */}
             <div className="p-4 flex gap-2 border-b border-slate-100 overflow-x-auto">
               <button 
                 onClick={() => setFiltroTierCoordinacion(null)}
@@ -844,7 +777,7 @@ export default function Dashboard() {
                     : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
                 }`}
               >
-                🟢 Excelente ({coordinacionData.filter(c => c.semaforo === 'VERDE').length})
+                ðŸŸ¢ Excelente ({coordinacionData.filter(c => c.semaforo === 'VERDE').length})
               </button>
               <button 
                 onClick={() => setFiltroTierCoordinacion('AMARILLO')}
@@ -854,7 +787,7 @@ export default function Dashboard() {
                     : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
                 }`}
               >
-                🟡 En desarrollo ({coordinacionData.filter(c => c.semaforo === 'AMARILLO').length})
+                ðŸŸ¡ En desarrollo ({coordinacionData.filter(c => c.semaforo === 'AMARILLO').length})
               </button>
               <button 
                 onClick={() => setFiltroTierCoordinacion('ROJO')}
@@ -864,7 +797,7 @@ export default function Dashboard() {
                     : 'bg-red-50 text-red-700 hover:bg-red-100'
                 }`}
               >
-                🔴 Atención ({coordinacionData.filter(c => c.semaforo === 'ROJO').length})
+                ðŸ”´ AtenciÃ³n ({coordinacionData.filter(c => c.semaforo === 'ROJO').length})
               </button>
             </div>
 
@@ -879,19 +812,20 @@ export default function Dashboard() {
                     <tr className="bg-slate-50 border-b border-slate-100">
                       <th className="p-4 text-xs font-black text-slate-400 uppercase">Colaborador</th>
                       <th className="p-4 text-xs font-black text-slate-400 uppercase">Unidad</th>
-                      <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">FTR</th>
+                      <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">% Efectividad</th>
                       <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">Tiempo Prom.</th>
                       <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">Registros</th>
                       <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">No Conf.</th>
-                      <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">SNC</th>
+                      <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">SNC LAB</th>
+                      <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">% Hallazgos</th>
                       <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">
                         <div className="flex items-center justify-center gap-1">
-                          Semáforo
+                          SemÃ¡foro
                           <InfoTooltip content={
                             <div className="w-56 text-left space-y-1">
-                              <p><span className="text-emerald-400 font-bold">🟢 Excelente:</span> FTR ≥98%, Tiempo ≤7min y NoConf=0</p>
-                              <p><span className="text-amber-400 font-bold">🟡 En desarrollo:</span> FTR ≥95% o Tiempo ≤8min o NoConf≤2</p>
-                              <p><span className="text-red-400 font-bold">🔴 Atención:</span> No cumple criterios mínimos</p>
+                              <p><span className="text-emerald-400 font-bold">ðŸŸ¢ Excelente:</span> Efectividad â‰¥98%, Tiempo â‰¤7min y NoConf=0</p>
+                              <p><span className="text-amber-400 font-bold">ðŸŸ¡ En desarrollo:</span> Efectividad â‰¥95% o Tiempo â‰¤8min o NoConfâ‰¤2</p>
+                              <p><span className="text-red-400 font-bold">ðŸ”´ AtenciÃ³n:</span> No cumple criterios mÃ­nimos</p>
                             </div>
                           } />
                         </div>
@@ -912,16 +846,17 @@ export default function Dashboard() {
                         <td className="p-4 text-slate-600">{col.unidad}</td>
                         <td className="p-4 text-center">
                           <span className={`font-mono font-bold ${
-                            col.ftr >= 98 ? 'text-emerald-600' : 
-                            col.ftr >= 95 ? 'text-amber-600' : 'text-red-600'
+                            col.efectividadSIO >= 98 ? 'text-emerald-600' : 
+                            col.efectividadSIO >= 95 ? 'text-amber-600' : 'text-red-600'
                           }`}>
-                            {col.ftr.toFixed(1)}%
+                            {col.efectividadSIO.toFixed(1)}%
                           </span>
                         </td>
                         <td className="p-4 text-center font-mono">{col.tiempoPromedio.toFixed(1)}</td>
                         <td className="p-4 text-center font-mono">{col.cantidadRegistros}</td>
                         <td className="p-4 text-center font-mono">{col.noConformidades}</td>
-                        <td className="p-4 text-center font-mono">{col.snc}</td>
+                        <td className="p-4 text-center font-mono">{col.sncLab}</td>
+                        <td className="p-4 text-center font-mono">{col.efectividadHallazgos.toFixed(1)}%</td>
                         <td className="p-4 text-center">
                           <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${getSemaforoColor(col.semaforo)}`}>
                             <span className={`w-2 h-2 rounded-full ${
@@ -929,7 +864,7 @@ export default function Dashboard() {
                               col.semaforo === 'AMARILLO' ? 'bg-amber-500' : 'bg-red-500'
                             }`}></span>
                             {col.semaforo === 'VERDE' ? 'Excelente' : 
-                             col.semaforo === 'AMARILLO' ? 'En desarrollo' : 'Atención'}
+                             col.semaforo === 'AMARILLO' ? 'En desarrollo' : 'AtenciÃ³n'}
                           </span>
                         </td>
                       </tr>
@@ -941,23 +876,22 @@ export default function Dashboard() {
 
             <div className="p-4 bg-slate-50 border-t border-slate-100">
               <p className="text-xs text-slate-500">
-                <span className="font-bold">Enfoque en velocidad + calidad:</span> Tu sistema debe medir: ✔ correcto | ✔ completo | ✔ en tiempo. Las tres cosas juntas.
+                <span className="font-bold">Enfoque en velocidad + calidad:</span> Tu sistema debe medir: âœ” correcto | âœ” completo | âœ” en tiempo. Las tres cosas juntas.
               </p>
             </div>
           </div>
         )}
 
-        {/* VISTA AGENDAMIENTO */}
         {activeTab === 'agendamiento' && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
             <div className="px-6 py-4 bg-slate-50 border-b border-slate-100">
               <h3 className="font-bold text-slate-800">AGENDAMIENTO - Detalle por Asesor</h3>
-              <p className="text-xs text-slate-400 mt-1">Validación obligatoria diaria: 10 auditorías de agendamiento por vendedor</p>
+              <p className="text-xs text-slate-400 mt-1">ValidaciÃ³n obligatoria diaria: 10 auditorÃ­as de agendamiento por vendedor</p>
             </div>
             
             <div className="p-4 bg-blue-50 border-b border-blue-100">
               <p className="text-xs text-blue-700">
-                <span className="font-bold">Regla de reincidencia:</span> 1 vez → retroalimentación-minuta | 2 veces → Incidencia | 3 veces → Acta Administrativa
+                <span className="font-bold">Regla de reincidencia:</span> 1 vez â†’ retroalimentaciÃ³n-minuta | 2 veces â†’ Incidencia | 3 veces â†’ Acta Administrativa
               </p>
             </div>
 
@@ -971,16 +905,16 @@ export default function Dashboard() {
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-100">
                       <th className="p-4 text-xs font-black text-slate-400 uppercase">Asesor</th>
-                      <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">Citas</th>
-                      <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">% Oport.</th>
-                      <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">Hall. Cotiz</th>
-                      <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">Hall. Venta</th>
-                      <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">% Efect. Aud.</th>
+                      <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">Opps</th>
+                      <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">Cierres</th>
+                      <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">% Conv</th>
+                      <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">No Conf</th>
                       <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">SNC</th>
-                      <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">No Conf.</th>
-                      <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">% Efect. Agend.</th>
+                      <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">Hall. Citas</th>
+                      <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">Hall. Cotiz</th>
+                      <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">Hall. Agendas</th>
+                      <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">Reincid</th>
                       <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">Estatus</th>
-                      <th className="p-4 text-xs font-black text-slate-400 uppercase text-center">Score</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -994,24 +928,33 @@ export default function Dashboard() {
                             {asesor.asesor}
                           </button>
                         </td>
-                        <td className="p-4 text-center font-mono">{asesor.citasAgendadas}</td>
-                        <td className="p-4 text-center font-mono">{asesor.oportunidadesAprovechadas}%</td>
-                        <td className="p-4 text-center font-mono">{asesor.hallazgosCotizacion}%</td>
-                        <td className="p-4 text-center font-mono">{asesor.hallazgosVenta}%</td>
-                        <td className="p-4 text-center font-mono">{asesor.efectividadHallazgos}%</td>
-                        <td className="p-4 text-center font-mono">{asesor.snc}</td>
-                        <td className="p-4 text-center font-mono">{asesor.noConformidades}</td>
-                        <td className="p-4 text-center font-mono">{asesor.efectividadAgendamiento}%</td>
+                        <td className="p-4 text-center font-mono">{asesor.oportunidades}</td>
+                        <td className="p-4 text-center font-mono">{asesor.cierres}</td>
                         <td className="p-4 text-center">
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${
-                            asesor.estatus === 'A' ? 'bg-emerald-100 text-emerald-600' :
-                            asesor.estatus === 'B' ? 'bg-amber-100 text-amber-600' :
-                            'bg-red-100 text-red-600'
+                          <span className={`font-mono font-bold ${
+                            asesor.conversion >= 60 ? 'text-emerald-600' : 
+                            asesor.conversion >= 50 ? 'text-amber-600' : 'text-red-600'
                           }`}>
-                            {asesor.estatus}
+                            {asesor.conversion.toFixed(1)}%
                           </span>
                         </td>
-                        <td className="p-4 text-center font-mono">{asesor.scoreTotal}</td>
+                        <td className="p-4 text-center font-mono">{asesor.noConformidades}</td>
+                        <td className="p-4 text-center font-mono">{asesor.snc}</td>
+                        <td className="p-4 text-center font-mono">{asesor.hallazgosCitas}</td>
+                        <td className="p-4 text-center font-mono">{asesor.hallazgosCotizacion}</td>
+                        <td className="p-4 text-center font-mono">{asesor.hallazgosAgendas}</td>
+                        <td className="p-4 text-center font-mono">{asesor.reincidencias}</td>
+                        <td className="p-4 text-center">
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${
+                            asesor.estatus === 'Activo' ? 'bg-emerald-100 text-emerald-600' :
+                            asesor.estatus === 'Observado' ? 'bg-amber-100 text-amber-600' :
+                            'bg-red-100 text-red-600'
+                          }`}>
+                            {asesor.estatus === 'Activo' ? 'ðŸŸ¢ Activo' :
+                             asesor.estatus === 'Observado' ? 'ðŸŸ¡ Observado' :
+                             'ðŸ”´ Plan Mejora'}
+                          </span>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -1021,12 +964,12 @@ export default function Dashboard() {
 
             <div className="p-4 bg-slate-50 border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <p className="text-xs font-bold text-slate-500">Validación obligatoria diaria:</p>
+                <p className="text-xs font-bold text-slate-500">ValidaciÃ³n obligatoria diaria:</p>
                 <ul className="text-xs text-slate-600 mt-1 list-disc list-inside">
-                  <li>10 auditorías de agendamiento por vendedor</li>
-                  <li>Formato de revisión de agendas</li>
-                  <li>Resultado visible el mismo día</li>
-                  <li>Retroalimentación inmediata</li>
+                  <li>10 auditorÃ­as de agendamiento por vendedor</li>
+                  <li>Formato de revisiÃ³n de agendas</li>
+                  <li>Resultado visible el mismo dÃ­a</li>
+                  <li>RetroalimentaciÃ³n inmediata</li>
                 </ul>
               </div>
               <div>
@@ -1042,212 +985,23 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* VISTA SATISFACCIÓN CLIENTE */}
-        {activeTab === 'satisfaccion' && (
-          <div className="space-y-6">
-            {/* Tarjetas KPI */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-xs font-bold text-slate-400 uppercase">NPS Promedio</p>
-                    <p className="text-3xl font-black text-slate-800 mt-1">{metricasSatisfaccion.npsPromedio}</p>
-                  </div>
-                  <span className="text-xs text-slate-400">Meta: 9.0</span>
-                </div>
-                <div className="mt-2 h-1 w-full bg-slate-100 rounded-full overflow-hidden">
-                  <div className="h-1 bg-blue-600 rounded-full" style={{ width: `${(parseFloat(metricasSatisfaccion.npsPromedio)/9)*100}%` }}></div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-xs font-bold text-slate-400 uppercase">% Felicitaciones</p>
-                    <p className="text-3xl font-black text-emerald-600 mt-1">{metricasSatisfaccion.felicitaciones}%</p>
-                  </div>
-                  <span className="text-xs text-slate-400">Meta: 90%</span>
-                </div>
-                <div className="mt-2 h-1 w-full bg-slate-100 rounded-full overflow-hidden">
-                  <div className="h-1 bg-emerald-600 rounded-full" style={{ width: `${(metricasSatisfaccion.felicitaciones/90)*100}%` }}></div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
-                <p className="text-xs font-bold text-slate-400 uppercase">Quejas Abiertas</p>
-                <p className="text-3xl font-black text-amber-600 mt-1">{metricasSatisfaccion.quejasAbiertas}</p>
-                <p className="text-xs text-slate-400 mt-2">Total: {satisfaccionFiltrada.length}</p>
-              </div>
-
-              <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
-                <p className="text-xs font-bold text-slate-400 uppercase">Tiempo Prom. Cierre</p>
-                <p className="text-3xl font-black text-slate-800 mt-1">{metricasSatisfaccion.tiempoPromedioCierre} hrs</p>
-                <p className="text-xs text-slate-400 mt-2">Meta: 48 hrs</p>
-              </div>
-            </div>
-
-            {/* Análisis IA de patrones */}
-            {Object.keys(analisisIA).length > 0 && (
-              <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-2xl p-5 border border-purple-100">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-xl">🤖</span>
-                  <h3 className="text-sm font-bold text-purple-800">Análisis Inteligente de Patrones</h3>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {Object.entries(analisisIA).map(([key, value]) => {
-                    if (key === 'topMotivos') return null;
-                    return (
-                      <div key={key} className="bg-white/80 rounded-lg p-3 border border-purple-200">
-                        <p className="text-xs font-bold text-purple-600 uppercase">{value.nivel}</p>
-                        <p className="text-sm mt-1">{value.mensaje}</p>
-                        <p className="text-xs text-purple-600 mt-1">💡 {value.sugerencia}</p>
-                      </div>
-                    );
-                  })}
-                </div>
-                {analisisIA.topMotivos && (
-                  <div className="mt-4 bg-white/80 rounded-lg p-3 border border-purple-200">
-                    <p className="text-xs font-bold text-purple-600 uppercase mb-2">Principales causas</p>
-                    <div className="space-y-2">
-                      {analisisIA.topMotivos.map((item, idx) => (
-                        <div key={idx} className="flex items-center justify-between">
-                          <span className="text-sm">{item.motivo}</span>
-                          <span className="text-xs font-bold text-purple-600">{item.count} casos</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Filtros con etiquetas */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
-              <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
-                🔍 Filtrar quejas
-                <InfoTooltip content="Filtra por sucursal, proceso, estado, mes o semana" />
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Sucursal</label>
-                  <select 
-                    value={filtrosSatisfaccion.sucursal}
-                    onChange={(e) => setFiltrosSatisfaccion({...filtrosSatisfaccion, sucursal: e.target.value})}
-                    className="text-xs border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#0066CC] w-full"
-                  >
-                    {opcionesSucursales.map(op => <option key={op} value={op}>{op}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Proceso</label>
-                  <select 
-                    value={filtrosSatisfaccion.proceso}
-                    onChange={(e) => setFiltrosSatisfaccion({...filtrosSatisfaccion, proceso: e.target.value})}
-                    className="text-xs border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#0066CC] w-full"
-                  >
-                    {opcionesProcesos.map(op => <option key={op} value={op}>{op}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Estado</label>
-                  <select 
-                    value={filtrosSatisfaccion.status}
-                    onChange={(e) => setFiltrosSatisfaccion({...filtrosSatisfaccion, status: e.target.value})}
-                    className="text-xs border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#0066CC] w-full"
-                  >
-                    {opcionesStatus.map(op => <option key={op} value={op}>{op}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Mes</label>
-                  <select 
-                    value={filtrosSatisfaccion.mes}
-                    onChange={(e) => setFiltrosSatisfaccion({...filtrosSatisfaccion, mes: e.target.value})}
-                    className="text-xs border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#0066CC] w-full"
-                  >
-                    {opcionesMeses.map(op => <option key={op} value={op}>{op}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Semana</label>
-                  <select 
-                    value={filtrosSatisfaccion.semana}
-                    onChange={(e) => setFiltrosSatisfaccion({...filtrosSatisfaccion, semana: e.target.value})}
-                    className="text-xs border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#0066CC] w-full"
-                  >
-                    {opcionesSemanas.map(op => <option key={op} value={op}>{op}</option>)}
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Listado de quejas */}
-            <div className="space-y-3">
-              {satisfaccionFiltrada.length === 0 ? (
-                <EmptyState periodo={periodo.valor} tipo={periodo.tipo} />
-              ) : (
-                satisfaccionFiltrada.map((queja, idx) => (
-                  <SatisfaccionFicha
-                    key={idx}
-                    queja={queja}
-                    onVerDetalle={(q) => setFichaColaborador({ datos: { queja: q }, tipo: 'queja' })}
-                  />
-                ))
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* VISTA PLAN DE ACCIÓN */}
         {activeTab === 'planaccion' && (
           <div className="space-y-6">
-            {/* Filtros de área y nivel */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
-              <div className="flex flex-wrap gap-4 items-center justify-between">
-                <div className="flex gap-2">
-                  {['TODAS', 'Coordinación', 'Agendamiento', 'Satisfacción'].map(area => (
-                    <button
-                      key={area}
-                      onClick={() => setFiltroArea(area)}
-                      className={`px-3 py-1 text-xs rounded-full transition-all ${
-                        filtroArea === area
-                          ? 'bg-[#0066CC] text-white'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                      }`}
-                    >
-                      {area}
-                    </button>
-                  ))}
-                </div>
-                <select 
-                  value={filtroNivel}
-                  onChange={(e) => setFiltroNivel(e.target.value)}
-                  className="text-xs border rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[#0066CC]"
-                >
-                  <option value="TODOS">Todos los niveles</option>
-                  <option value="URGENTE">🔴 Urgente</option>
-                  <option value="CRÍTICO">🟠 Crítico</option>
-                  <option value="ALTO">🟡 Alto</option>
-                  <option value="VERDE">🟢 Verde</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Planes de acción por nivel */}
+            {/* Planes de acciÃ³n por nivel */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-              <h3 className="text-sm font-bold text-slate-800 mb-4">📊 PLANES DE ACCIÓN POR NIVEL</h3>
+              <h3 className="text-sm font-bold text-slate-800 mb-4">ðŸ“Š PLANES DE ACCIÃ“N POR NIVEL</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
-                  { nivel: 'URGENTE', color: 'red', accion: 'Intervención diaria', meta: 'Subir a amarillo en 2 semanas', count: recomendaciones.filter(r => r.nivel === 'URGENTE').length },
-                  { nivel: 'CRÍTICO', color: 'orange', accion: 'Coaching intensivo', meta: 'Subir a amarillo en 3 semanas', count: recomendaciones.filter(r => r.nivel === 'CRÍTICO').length },
+                  { nivel: 'URGENTE', color: 'red', accion: 'IntervenciÃ³n diaria', meta: 'Subir a amarillo en 2 semanas', count: recomendaciones.filter(r => r.nivel === 'URGENTE').length },
+                  { nivel: 'CRÃTICO', color: 'orange', accion: 'Coaching intensivo', meta: 'Subir a amarillo en 3 semanas', count: recomendaciones.filter(r => r.nivel === 'CRÃTICO').length },
                   { nivel: 'ALTO', color: 'amber', accion: 'Coaching semanal', meta: 'Subir a verde en 1 mes', count: recomendaciones.filter(r => r.nivel === 'ALTO').length },
-                  { nivel: 'VERDE', color: 'emerald', accion: 'Mentoría a otros', meta: 'Mantener y compartir', count: recomendaciones.filter(r => r.nivel === 'VERDE').length },
+                  { nivel: 'VERDE', color: 'emerald', accion: 'MentorÃ­a a otros', meta: 'Mantener y compartir', count: recomendaciones.filter(r => r.nivel === 'VERDE').length },
                 ].map((item, idx) => (
                   <div 
                     key={idx} 
                     className={`p-4 rounded-lg border ${
                       item.nivel === 'URGENTE' ? 'bg-red-50 border-red-200' :
-                      item.nivel === 'CRÍTICO' ? 'bg-orange-50 border-orange-200' :
+                      item.nivel === 'CRÃTICO' ? 'bg-orange-50 border-orange-200' :
                       item.nivel === 'ALTO' ? 'bg-amber-50 border-amber-200' :
                       'bg-emerald-50 border-emerald-200'
                     } cursor-pointer hover:shadow-md transition-shadow`}
@@ -1256,13 +1010,13 @@ export default function Dashboard() {
                     <div className="flex justify-between items-center mb-2">
                       <span className={`text-xs font-black uppercase ${
                         item.nivel === 'URGENTE' ? 'text-red-600' :
-                        item.nivel === 'CRÍTICO' ? 'text-orange-600' :
+                        item.nivel === 'CRÃTICO' ? 'text-orange-600' :
                         item.nivel === 'ALTO' ? 'text-amber-600' :
                         'text-emerald-600'
                       }`}>{item.nivel}</span>
                       <span className={`text-sm font-bold ${
                         item.nivel === 'URGENTE' ? 'text-red-600' :
-                        item.nivel === 'CRÍTICO' ? 'text-orange-600' :
+                        item.nivel === 'CRÃTICO' ? 'text-orange-600' :
                         item.nivel === 'ALTO' ? 'text-amber-600' :
                         'text-emerald-600'
                       }`}>{item.count}</span>
@@ -1278,7 +1032,18 @@ export default function Dashboard() {
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
               <div className="p-4 bg-slate-50 border-b border-slate-100">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-bold text-slate-800">📋 RECOMENDACIONES PRIORIZADAS</h2>
+                  <h2 className="text-lg font-bold text-slate-800">ðŸ“‹ RECOMENDACIONES PRIORIZADAS</h2>
+                  <select 
+                    value={filtroNivel}
+                    onChange={(e) => setFiltroNivel(e.target.value)}
+                    className="text-xs border rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[#0066CC]"
+                  >
+                    <option value="TODOS">Todos los niveles</option>
+                    <option value="URGENTE">ðŸ”´ Urgente</option>
+                    <option value="CRÃTICO">ðŸŸ  CrÃ­tico</option>
+                    <option value="ALTO">ðŸŸ¡ Alto</option>
+                    <option value="VERDE">ðŸŸ¢ Verde</option>
+                  </select>
                 </div>
                 <p className="text-xs text-slate-500 mt-1">
                   Basado en reglas de negocio y reincidencias
@@ -1307,17 +1072,18 @@ export default function Dashboard() {
                           completada
                             ? 'bg-slate-50 border-slate-200 opacity-70'
                             : rec.nivel === 'URGENTE' ? 'bg-red-50 border-red-200' :
-                              rec.nivel === 'CRÍTICO' ? 'bg-orange-50 border-orange-200' :
+                              rec.nivel === 'CRÃTICO' ? 'bg-orange-50 border-orange-200' :
                               rec.nivel === 'ALTO' ? 'bg-amber-50 border-amber-200' :
                               'bg-emerald-50 border-emerald-200'
                         }`}
                       >
+                        {/* CABECERA */}
                         <div className="p-4">
                           <div className="flex items-start justify-between mb-2">
                             <div className="flex items-center gap-2">
                               <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
                                 rec.nivel === 'URGENTE' ? 'bg-red-600' :
-                                rec.nivel === 'CRÍTICO' ? 'bg-orange-500' :
+                                rec.nivel === 'CRÃTICO' ? 'bg-orange-500' :
                                 rec.nivel === 'ALTO' ? 'bg-amber-500' : 'bg-emerald-500'
                               }`}></span>
                               <span className="text-xs font-black uppercase">{rec.nivel}</span>
@@ -1334,27 +1100,29 @@ export default function Dashboard() {
                           <p className="text-xs text-slate-600 mb-3">{rec.metrica}</p>
 
                           <div className="bg-white/50 rounded-lg p-3 mb-3">
-                            <p className="text-sm font-medium mb-1">▶ {rec.sugerencia}</p>
+                            <p className="text-sm font-medium mb-1">â–¶ {rec.sugerencia}</p>
                             <div className="flex justify-between text-[10px] text-slate-500">
-                              <span>👤 {rec.responsable}</span>
-                              <span>⏱️ {rec.plazo} · 📅 {rec.fechaLimite}</span>
+                              <span>ðŸ‘¤ {rec.responsable}</span>
+                              <span>â±ï¸ {rec.plazo} Â· ðŸ“… {rec.fechaLimite}</span>
                             </div>
                           </div>
 
+                          {/* Feedback IA */}
                           {rec.feedback && (
                             <div className="mb-3 p-3 bg-white rounded-lg border border-blue-100">
-                              <p className="text-[10px] text-blue-500 font-bold uppercase mb-1">🤖 Feedback IA</p>
+                              <p className="text-[10px] text-blue-500 font-bold uppercase mb-1">ðŸ¤– Feedback IA</p>
                               <p className="text-xs text-slate-700 italic">"{rec.feedback}"</p>
                             </div>
                           )}
 
+                          {/* Seguimientos guardados anteriores */}
                           {segs.length > 0 && (
                             <div className="mb-3 space-y-2">
                               {segs.map((seg, i) => (
                                 <div key={i} className="bg-white rounded-lg border border-slate-200 p-3">
                                   <div className="flex justify-between items-center mb-1">
                                     <span className="text-[10px] font-bold text-slate-500 uppercase">
-                                      📋 Sesión {new Date(seg.fechaRegistro).toLocaleDateString()}
+                                      ðŸ“‹ SesiÃ³n {seg.fechaRegistro}
                                     </span>
                                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
                                       seg.estado === 'COMPLETADO'
@@ -1366,12 +1134,14 @@ export default function Dashboard() {
                                   </div>
                                   {seg.notas && <p className="text-xs text-slate-600"><span className="font-semibold">Notas:</span> {seg.notas}</p>}
                                   {seg.acuerdos && <p className="text-xs text-slate-600 mt-1"><span className="font-semibold">Acuerdos:</span> {seg.acuerdos}</p>}
-                                  {seg.fechaCompromiso && <p className="text-[10px] text-slate-400 mt-1">📅 Compromiso: {new Date(seg.fechaCompromiso).toLocaleDateString()}</p>}
+                                  {seg.fechaCompromiso && <p className="text-[10px] text-slate-400 mt-1">ðŸ“… Compromiso: {seg.fechaCompromiso}</p>}
+                                  {seg.emailEnviado === 'SI' && <p className="text-[10px] text-emerald-600 mt-1">âœ‰ï¸ Correo enviado</p>}
                                 </div>
                               ))}
                             </div>
                           )}
 
+                          {/* Botones principales */}
                           <div className="flex flex-wrap justify-end gap-2">
                             <button
                               onClick={() => generarFeedbackIA(rec)}
@@ -1414,20 +1184,21 @@ export default function Dashboard() {
                           </div>
                         </div>
 
+                        {/* PANEL DE NOTAS Y ACUERDOS */}
                         {abierto && (
                           <div className="border-t border-white/50 bg-white/70 p-4 rounded-b-xl">
                             <h5 className="text-xs font-black text-slate-600 uppercase tracking-wider mb-3">
-                              📝 Sesión de retroalimentación
+                              ðŸ“ SesiÃ³n de retroalimentaciÃ³n
                             </h5>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                               <div>
                                 <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">
-                                  Notas de la sesión
+                                  Notas de la sesiÃ³n
                                 </label>
                                 <textarea
                                   rows={3}
-                                  placeholder="¿Qué se trató en la sesión? ¿Cómo reaccionó el colaborador?..."
+                                  placeholder="Â¿QuÃ© se tratÃ³ en la sesiÃ³n? Â¿CÃ³mo reaccionÃ³ el colaborador?..."
                                   value={form.notas || ''}
                                   onChange={e => setNotasForm(prev => ({
                                     ...prev,
@@ -1442,7 +1213,7 @@ export default function Dashboard() {
                                 </label>
                                 <textarea
                                   rows={3}
-                                  placeholder="¿Qué compromisos se pactaron? ¿Qué va a hacer el colaborador diferente?..."
+                                  placeholder="Â¿QuÃ© compromisos se pactaron? Â¿QuÃ© va a hacer el colaborador diferente?..."
                                   value={form.acuerdos || ''}
                                   onChange={e => setNotasForm(prev => ({
                                     ...prev,
@@ -1453,7 +1224,7 @@ export default function Dashboard() {
                               </div>
                             </div>
 
-                            <div className="flex items-end gap-3 mb-3">
+                            <div className="flex flex-wrap items-end gap-3 mb-3">
                               <div>
                                 <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">
                                   Fecha compromiso
@@ -1468,6 +1239,8 @@ export default function Dashboard() {
                                   className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
                                 />
                               </div>
+
+
                             </div>
 
                             <div className="flex justify-end gap-2">
@@ -1476,7 +1249,7 @@ export default function Dashboard() {
                                 disabled={guardando === rec.id}
                                 className="text-xs bg-slate-700 hover:bg-slate-900 text-white px-4 py-1.5 rounded-lg flex items-center gap-1 transition-colors disabled:opacity-50"
                               >
-                                {guardando === rec.id ? '⏳ Guardando...' : '💾 Guardar en Sheets'}
+                                {guardando === rec.id ? 'â³ Guardando...' : 'ðŸ’¾ Guardar en Sheets'}
                               </button>
 
                               <button
@@ -1484,7 +1257,7 @@ export default function Dashboard() {
                                 disabled={enviando === rec.id}
                                 className="text-xs bg-[#0066CC] hover:bg-[#0052a3] text-white px-4 py-1.5 rounded-lg flex items-center gap-1 transition-colors disabled:opacity-50"
                               >
-                                {enviando === rec.id ? '⏳ Generando...' : '📄 Descargar constancia PDF'}
+                                {enviando === rec.id ? 'â³ Generando...' : 'ðŸ“„ Descargar constancia PDF'}
                               </button>
                             </div>
                           </div>
@@ -1496,7 +1269,7 @@ export default function Dashboard() {
               </div>
               
               <div className="p-3 bg-slate-50 border-t border-slate-100 text-[9px] text-slate-400 text-center">
-                Las recomendaciones se actualizan automáticamente desde Google Sheets · Notas guardadas en pestaña SEGUIMIENTO
+                Las recomendaciones se actualizan automÃ¡ticamente desde Google Sheets Â· Notas guardadas en pestaÃ±a SEGUIMIENTO
               </div>
             </div>
           </div>
@@ -1506,8 +1279,10 @@ export default function Dashboard() {
       <FloatingUploadButton />
 
       <footer className="mt-8 text-center text-[10px] text-slate-400 font-bold uppercase tracking-[3px] pb-4">
-        Análisis Integral de Desempeño · Recomendaciones basadas en IA
+        AnÃ¡lisis Integral de DesempeÃ±o Â· Recomendaciones basadas en IA
       </footer>
     </div>
   );
 }
+
+

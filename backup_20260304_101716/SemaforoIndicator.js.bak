@@ -1,12 +1,4 @@
-﻿// Función de cálculo unificada (exportada para usar en otros componentes)
-export function calcularSemaforo(ftr, tiempo, noConformidades) {
-  if (ftr >= 98 && tiempo <= 7 && noConformidades === 0) return 'VERDE';
-  if (ftr >= 95 || tiempo <= 8 || noConformidades <= 2) return 'AMARILLO';
-  return 'ROJO';
-}
-
 export default function SemaforoIndicator({ value, type = 'efectividad' }) {
-  // Esta función se mantiene para compatibilidad, pero idealmente usar calcularSemaforo
   const getSemaforo = () => {
     if (type === 'efectividad') {
       if (value >= 98) return { color: 'bg-emerald-500', label: 'Excelente', text: 'text-emerald-600', bg: 'bg-emerald-50' };
