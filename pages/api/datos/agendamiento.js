@@ -1,5 +1,15 @@
 import { getSheetData } from '../../../lib/googleSheets';
 
+function parseFecha(fechaStr) {
+  if (!fechaStr) return null;
+  const partes = fechaStr.split('/');
+  if (partes.length === 3) {
+    const [dia, mes, anio] = partes;
+    return new Date(parseInt(anio), parseInt(mes) - 1, parseInt(dia));
+  }
+  return null;
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ message: 'Method not allowed' });
@@ -11,6 +21,7 @@ export default async function handler(req, res) {
     
     let datos = data.map(row => ({
       fecha: row[0],
+      fechaObj: parseFecha(row[0]),
       mes: row[1],
       semana: parseInt(row[2]),
       asesor: row[3],
@@ -26,15 +37,16 @@ export default async function handler(req, res) {
       scoreTotal: parseFloat(row[13]) || 0
     }));
 
-    // Filtrar por fecha
     if (fechaInicio && fechaFin) {
       const inicio = new Date(fechaInicio);
       const fin = new Date(fechaFin);
       datos = datos.filter(d => {
-        const fechaD = new Date(d.fecha);
-        return fechaD >= inicio && fechaD <= fin;
+        if (!d.fechaObj) return false;
+        return d.fechaObj >= inicio && d.fechaObj <= fin;
       });
     }
+
+    datos = datos.map(({ fechaObj, ...rest }) => rest);
 
     res.status(200).json(datos);
   } catch (error) {
