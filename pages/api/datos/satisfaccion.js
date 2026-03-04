@@ -6,13 +6,15 @@ export default async function handler(req, res) {
   }
 
   try {
+    const { fechaInicio, fechaFin, sucursal, proceso, status } = req.query;
     const data = await getSheetData('SATISFACCION_CLIENTE!A2:W');
     
-    const quejas = data.map(row => ({
+    let quejas = data.map((row, index) => ({
+      id: `Q-${index + 1}`,
       noQueja: row[0],
       noQuejaCompleto: row[1],
       mes: row[2],
-      semana: row[3],
+      semana: row[3] ? parseInt(row[3]) : null,
       fechaRecepcion: row[4],
       sucursal: row[5],
       empresa: row[6],
@@ -29,10 +31,23 @@ export default async function handler(req, res) {
       modalidad: row[17],
       responsableFalla: row[18],
       accionCorrectiva: row[19],
-      status: row[20],
+      status: row[20] || 'PENDIENTE',
       fechaCierre: row[21],
-      tiempoCierre: row[22]
+      tiempoCierre: row[22] ? parseFloat(row[22]) : null
     }));
+
+    // Aplicar filtros
+    if (fechaInicio && fechaFin) {
+      const inicio = new Date(fechaInicio);
+      const fin = new Date(fechaFin);
+      quejas = quejas.filter(q => {
+        const fechaQ = new Date(q.fechaRecepcion);
+        return fechaQ >= inicio && fechaQ <= fin;
+      });
+    }
+    if (sucursal && sucursal !== 'TODAS') quejas = quejas.filter(q => q.sucursal === sucursal);
+    if (proceso && proceso !== 'TODOS') quejas = quejas.filter(q => q.proceso === proceso);
+    if (status && status !== 'TODOS') quejas = quejas.filter(q => q.status === status);
 
     res.status(200).json(quejas);
   } catch (error) {
