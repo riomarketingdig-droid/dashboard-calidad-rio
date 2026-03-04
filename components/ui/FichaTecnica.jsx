@@ -1,10 +1,10 @@
 ﻿import { useState } from 'react';
-import InfoTooltip from './InfoTooltip';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 
 export default function FichaTecnica({ colaborador, tipo, seguimientos, recomendaciones, onClose }) {
   const [pestanaActiva, setPestanaActiva] = useState('info');
 
+  // ========== SEMÁFORO ==========
   const calcularSemaforo = (datos) => {
     if (tipo === 'coordinacion') {
       const ftr = datos.ftr || 0;
@@ -36,12 +36,15 @@ export default function FichaTecnica({ colaborador, tipo, seguimientos, recomend
     }
   };
 
-  // Vista para quejas (sin cambios)
+  // ========== VISTA PARA QUEJAS ==========
   if (tipo === 'queja' && colaborador.queja) {
     const q = colaborador.queja;
-    const tiempoResolucion = q.tiempoCierre || (q.fechaCierre && q.fechaRecepcion 
-      ? Math.round((new Date(q.fechaCierre) - new Date(q.fechaRecepcion)) / (1000 * 60 * 60))
-      : null);
+    
+    // Calcular tiempo de resolución en DÍAS (ya que en sheets solo hay fechas)
+    const diasResolucion = q.fechaCierre && q.fechaRecepcion
+      ? Math.round((new Date(q.fechaCierre) - new Date(q.fechaRecepcion)) / (1000 * 60 * 60 * 24))
+      : null;
+
     const recomendacionesRelacionadas = recomendaciones?.filter(r => 
       r.area === q.proceso || r.agente === q.responsableFalla
     ) || [];
@@ -57,24 +60,16 @@ export default function FichaTecnica({ colaborador, tipo, seguimientos, recomend
               <div className="flex items-center gap-2 mb-1">
                 <span className={`text-xs px-2 py-1 rounded-full font-bold ${
                   q.status === 'CERRADA' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
-                }`}>
-                  {q.status}
-                </span>
-                <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-full">
-                  {q.modalidad}
-                </span>
-                {tiempoResolucion && (
+                }`}>{q.status}</span>
+                <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-full">{q.modalidad}</span>
+                {diasResolucion && (
                   <span className={`text-xs px-2 py-1 rounded-full ${
-                    tiempoResolucion <= 48 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
-                  }`}>
-                    {tiempoResolucion} hrs
-                  </span>
+                    diasResolucion <= 2 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                  }`}>{diasResolucion} días</span>
                 )}
               </div>
-              <h2 className="text-xl font-bold text-slate-800">Queja {q.noQuejaCompleto}</h2>
-              <p className="text-xs text-slate-400 mt-1">
-                {q.sucursal} · {q.proceso} · {q.mes} {q.semana ? `Sem ${q.semana}` : ''}
-              </p>
+              <h2 className="text-xl font-bold text-slate-800">Queja {q.noQuejaCompleto || q.noQueja}</h2>
+              <p className="text-xs text-slate-400 mt-1">{q.sucursal} · {q.proceso} · {q.mes}</p>
             </div>
             <button onClick={onClose} className="text-slate-400 hover:text-slate-600">✕</button>
           </div>
@@ -82,9 +77,9 @@ export default function FichaTecnica({ colaborador, tipo, seguimientos, recomend
           {/* Pestañas de queja */}
           <div className="border-b border-slate-100 px-6">
             <div className="flex space-x-6">
-              <button onClick={() => setPestanaActiva('info')} className={`py-3 border-b-2 font-medium text-sm ${pestanaActiva==='info'?'border-[#0066CC] text-[#0066CC]':'border-transparent text-slate-400'}`}>📋 Detalle de la queja</button>
-              <button onClick={() => setPestanaActiva('acciones')} className={`py-3 border-b-2 font-medium text-sm ${pestanaActiva==='acciones'?'border-[#0066CC] text-[#0066CC]':'border-transparent text-slate-400'}`}>🎯 Plan de acción</button>
-              <button onClick={() => setPestanaActiva('historial')} className={`py-3 border-b-2 font-medium text-sm ${pestanaActiva==='historial'?'border-[#0066CC] text-[#0066CC]':'border-transparent text-slate-400'}`}>📊 Historial ({seguimientosRelacionados.length})</button>
+              <button onClick={() => setPestanaActiva('info')} className={`py-3 border-b-2 font-medium text-sm ${pestanaActiva==='info' ? 'border-[#0066CC] text-[#0066CC]' : 'border-transparent text-slate-400'}`}>📋 Detalle</button>
+              <button onClick={() => setPestanaActiva('acciones')} className={`py-3 border-b-2 font-medium text-sm ${pestanaActiva==='acciones' ? 'border-[#0066CC] text-[#0066CC]' : 'border-transparent text-slate-400'}`}>🎯 Plan de acción</button>
+              <button onClick={() => setPestanaActiva('historial')} className={`py-3 border-b-2 font-medium text-sm ${pestanaActiva==='historial' ? 'border-[#0066CC] text-[#0066CC]' : 'border-transparent text-slate-400'}`}>📊 Historial ({seguimientosRelacionados.length})</button>
             </div>
           </div>
 
@@ -95,7 +90,7 @@ export default function FichaTecnica({ colaborador, tipo, seguimientos, recomend
                   <div className="bg-slate-50 p-3 rounded-lg"><p className="text-[10px] text-slate-400 uppercase">Sucursal</p><p className="text-sm font-bold">{q.sucursal}</p></div>
                   <div className="bg-slate-50 p-3 rounded-lg"><p className="text-[10px] text-slate-400 uppercase">Empresa</p><p className="text-sm font-bold">{q.empresa}</p></div>
                   <div className="bg-slate-50 p-3 rounded-lg"><p className="text-[10px] text-slate-400 uppercase">Procedencia</p><p className="text-sm font-bold">{q.procedencia}</p></div>
-                  <div className="bg-slate-50 p-3 rounded-lg"><p className="text-[10px] text-slate-400 uppercase">Responsable falla</p><p className="text-sm font-bold">{q.responsableFalla || 'No asignado'}</p></div>
+                  <div className="bg-slate-50 p-3 rounded-lg"><p className="text-[10px] text-slate-400 uppercase">Responsable</p><p className="text-sm font-bold">{q.responsableFalla || 'No asignado'}</p></div>
                 </div>
                 <div className="bg-slate-50 p-4 rounded-lg">
                   <p className="text-xs font-bold text-slate-400 uppercase mb-4">⏱️ Línea de tiempo</p>
@@ -105,14 +100,14 @@ export default function FichaTecnica({ colaborador, tipo, seguimientos, recomend
                       <div className="relative pl-10">
                         <div className="absolute left-2 top-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white"></div>
                         <p className="text-xs text-slate-400">Recepción</p>
-                        <p className="text-sm font-medium">{new Date(q.fechaRecepcion).toLocaleString()}</p>
+                        <p className="text-sm font-medium">{new Date(q.fechaRecepcion).toLocaleDateString()}</p>
                       </div>
                       {q.fechaCierre && (
                         <div className="relative pl-10">
                           <div className="absolute left-2 top-1 w-4 h-4 bg-blue-500 rounded-full border-2 border-white"></div>
                           <p className="text-xs text-slate-400">Cierre</p>
-                          <p className="text-sm font-medium">{new Date(q.fechaCierre).toLocaleString()}</p>
-                          <p className="text-xs text-slate-500 mt-1">Tiempo de resolución: {tiempoResolucion} horas {tiempoResolucion > 48 && '(⚠️ Excede meta de 48hrs)'}</p>
+                          <p className="text-sm font-medium">{new Date(q.fechaCierre).toLocaleDateString()}</p>
+                          <p className="text-xs text-slate-500 mt-1">Tiempo de resolución: {diasResolucion} días {diasResolucion > 2 && '(⚠️ Excede meta de 2 días)'}</p>
                         </div>
                       )}
                     </div>
@@ -127,25 +122,18 @@ export default function FichaTecnica({ colaborador, tipo, seguimientos, recomend
                   <p className="text-sm">{q.causaRaiz || 'No especificada'}</p>
                   {q.comentarios && <p className="text-xs text-slate-500 mt-2 italic">"{q.comentarios}"</p>}
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs bg-slate-50 p-4 rounded-lg">
-                  <div><span className="text-slate-400 block">Motivo:</span><span className="font-medium">{q.motivo}</span></div>
-                  <div><span className="text-slate-400 block">Subproceso:</span><span className="font-medium">{q.subProceso}</span></div>
-                  <div><span className="text-slate-400 block">CITA:</span><span className="font-medium">{q.cita}</span></div>
-                  <div><span className="text-slate-400 block"># Acción correctiva:</span><span className="font-medium">{q.accionCorrectiva || 'N/A'}</span></div>
-                  <div><span className="text-slate-400 block">Responsable plan:</span><span className="font-medium">{q.responsablePlan || 'N/A'}</span></div>
-                </div>
               </div>
             )}
             {pestanaActiva === 'acciones' && (
               <div className="space-y-6">
                 <div className="bg-emerald-50 p-5 rounded-lg border border-emerald-200">
                   <p className="text-xs font-bold text-emerald-600 uppercase mb-3">📌 Plan de Acción</p>
-                  <p className="text-sm mb-4">{q.planAccion || 'No se ha definido un plan de acción'}</p>
-                  <div className="flex justify-between text-xs"><span className="text-emerald-600 font-medium">Responsable: {q.responsablePlan || 'No asignado'}</span>{q.fechaCierre && <span className="text-slate-500">Cerrado: {new Date(q.fechaCierre).toLocaleDateString()}</span>}</div>
+                  <p className="text-sm mb-4">{q.planAccion || 'No definido'}</p>
+                  <div className="flex justify-between text-xs"><span>Responsable: {q.responsablePlan || 'No asignado'}</span>{q.fechaCierre && <span>Cerrado: {new Date(q.fechaCierre).toLocaleDateString()}</span>}</div>
                 </div>
                 {recomendacionesRelacionadas.length > 0 && (
                   <div>
-                    <p className="text-xs font-bold text-slate-400 uppercase mb-3">🤖 Recomendaciones IA relacionadas</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase mb-3">🤖 Recomendaciones IA</p>
                     <div className="space-y-3">
                       {recomendacionesRelacionadas.map((rec, idx) => (
                         <div key={idx} className="bg-blue-50 p-4 rounded-lg border border-blue-200">
@@ -160,30 +148,21 @@ export default function FichaTecnica({ colaborador, tipo, seguimientos, recomend
                     </div>
                   </div>
                 )}
-                <div className="bg-slate-50 p-4 rounded-lg">
-                  <p className="text-xs font-bold text-slate-400 uppercase mb-3">🛡️ Acciones preventivas sugeridas</p>
-                  <ul className="space-y-2 text-sm">
-                    <li className="flex items-start gap-2"><span className="text-emerald-500 mt-1">•</span><span>Documentar el caso en la base de conocimiento para evitar recurrencia</span></li>
-                    <li className="flex items-start gap-2"><span className="text-emerald-500 mt-1">•</span><span>Compartir lección aprendida con el equipo de {q.proceso}</span></li>
-                    <li className="flex items-start gap-2"><span className="text-emerald-500 mt-1">•</span><span>Revisar si hay otros casos similares con {q.responsableFalla || 'el mismo responsable'}</span></li>
-                  </ul>
-                </div>
               </div>
             )}
             {pestanaActiva === 'historial' && (
               <div className="space-y-4">
                 {seguimientosRelacionados.length === 0 ? (
-                  <div className="text-center py-8 bg-slate-50 rounded-lg"><p className="text-sm text-slate-400">No hay seguimientos registrados para esta queja</p></div>
+                  <div className="text-center py-8 bg-slate-50 rounded-lg"><p className="text-sm text-slate-400">No hay seguimientos</p></div>
                 ) : (
                   seguimientosRelacionados.map((seg, idx) => (
-                    <div key={idx} className="bg-white border border-slate-200 rounded-lg p-4 hover:shadow-sm">
+                    <div key={idx} className="bg-white border border-slate-200 rounded-lg p-4">
                       <div className="flex justify-between items-start mb-2">
-                        <div><span className="text-xs font-bold text-slate-400 uppercase">{new Date(seg.fechaRegistro).toLocaleDateString()}</span><span className={`ml-3 text-xs px-2 py-0.5 rounded-full font-bold ${seg.estado==='COMPLETADO'?'bg-emerald-100 text-emerald-700':'bg-amber-100 text-amber-700'}`}>{seg.estado}</span></div>
-                        <span className="text-xs text-slate-400">{seg.responsable}</span>
+                        <span className="text-xs font-bold text-slate-400 uppercase">{new Date(seg.fechaRegistro).toLocaleDateString()}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${seg.estado==='COMPLETADO' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{seg.estado}</span>
                       </div>
-                      {seg.notas && <div><p className="text-xs text-slate-500">📝 Notas:</p><p className="text-sm">{seg.notas}</p></div>}
-                      {seg.acuerdos && <div><p className="text-xs text-slate-500">🤝 Acuerdos:</p><p className="text-sm">{seg.acuerdos}</p></div>}
-                      {seg.fechaCompromiso && <p className="text-xs text-slate-400 mt-2">📅 Compromiso: {new Date(seg.fechaCompromiso).toLocaleDateString()}</p>}
+                      {seg.notas && <p className="text-sm"><span className="font-semibold">Notas:</span> {seg.notas}</p>}
+                      {seg.acuerdos && <p className="text-sm"><span className="font-semibold">Acuerdos:</span> {seg.acuerdos}</p>}
                     </div>
                   ))
                 )}
@@ -195,7 +174,7 @@ export default function FichaTecnica({ colaborador, tipo, seguimientos, recomend
     );
   }
 
-  // Vista para colaboradores (mejorada con radar)
+  // ========== VISTA PARA COLABORADORES (con radar corregido) ==========
   if (tipo === 'coordinacion' || tipo === 'agendamiento') {
     const datos = colaborador;
     const recomendacionesColaborador = recomendaciones?.filter(r => 
@@ -205,20 +184,29 @@ export default function FichaTecnica({ colaborador, tipo, seguimientos, recomend
       recomendacionesColaborador.some(r => r.id === s.recomendacionId)
     ) || [];
 
+    // Preparar datos para radar: valores normalizados 0-100, donde mayor = mejor.
+    // Para No Conformidades, invertimos: si noConf es 0, vale 100; si es 5, vale 0.
     const radarData = [];
     if (tipo === 'coordinacion') {
+      const maxNoConf = 5; // asumimos que 5 es el máximo tolerable
+      const valorNoConf = datos.noConformidades !== undefined
+        ? Math.max(0, 100 - (datos.noConformidades / maxNoConf) * 100)
+        : 100;
       radarData.push(
         { metric: 'FTR', value: datos.ftr || 0, fullMark: 100 },
-        { metric: 'Tiempo', value: datos.tiempoPromedio ? Math.max(0, 10 - datos.tiempoPromedio) * 10 : 0, fullMark: 100 },
-        { metric: 'No Conformidades', value: datos.noConformidades ? Math.max(0, 5 - datos.noConformidades) * 20 : 100, fullMark: 100 },
-        { metric: 'SNC', value: datos.snc ? Math.max(0, 5 - datos.snc) * 20 : 100, fullMark: 100 }
+        { metric: 'Tiempo', value: datos.tiempoPromedio ? Math.max(0, 100 - (datos.tiempoPromedio / 10) * 100) : 100, fullMark: 100 },
+        { metric: 'No Conformidades', value: valorNoConf, fullMark: 100 },
+        { metric: 'SNC', value: datos.snc ? Math.max(0, 100 - (datos.snc / 5) * 100) : 100, fullMark: 100 }
       );
     } else {
+      const valorNoConf = datos.noConformidades !== undefined
+        ? Math.max(0, 100 - (datos.noConformidades / 5) * 100)
+        : 100;
       radarData.push(
         { metric: 'Oportunidades', value: datos.oportunidadesAprovechadas || 0, fullMark: 100 },
         { metric: 'Efect. Hallazgos', value: datos.efectividadHallazgos || 0, fullMark: 100 },
         { metric: 'Score', value: datos.scoreTotal || 0, fullMark: 100 },
-        { metric: 'No Conformidades', value: datos.noConformidades ? Math.max(0, 5 - datos.noConformidades) * 20 : 100, fullMark: 100 }
+        { metric: 'No Conformidades', value: valorNoConf, fullMark: 100 }
       );
     }
 
@@ -229,13 +217,8 @@ export default function FichaTecnica({ colaborador, tipo, seguimientos, recomend
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${getSemaforoColor(semaforo)}`}>
-                  <span className={`w-2 h-2 rounded-full ${
-                    semaforo === 'VERDE' ? 'bg-emerald-500' :
-                    semaforo === 'AMARILLO' ? 'bg-amber-500' : 'bg-red-500'
-                  }`}></span>
-                  {semaforo === 'VERDE' ? 'Excelente' : 
-                   semaforo === 'AMARILLO' ? 'En desarrollo' : 
-                   semaforo === 'ROJO' ? 'Atención' : 'Sin definir'}
+                  <span className={`w-2 h-2 rounded-full ${semaforo === 'VERDE' ? 'bg-emerald-500' : semaforo === 'AMARILLO' ? 'bg-amber-500' : 'bg-red-500'}`}></span>
+                  {semaforo === 'VERDE' ? 'Excelente' : semaforo === 'AMARILLO' ? 'En desarrollo' : 'Atención'}
                 </span>
               </div>
               <h2 className="text-xl font-bold text-slate-800">{datos.colaborador || datos.asesor}</h2>
@@ -245,17 +228,17 @@ export default function FichaTecnica({ colaborador, tipo, seguimientos, recomend
           </div>
           <div className="border-b border-slate-100 px-6">
             <div className="flex space-x-6">
-              <button onClick={() => setPestanaActiva('info')} className={`py-3 border-b-2 font-medium text-sm ${pestanaActiva==='info'?'border-[#0066CC] text-[#0066CC]':'border-transparent text-slate-400'}`}>📊 Métricas actuales</button>
-              <button onClick={() => setPestanaActiva('radar')} className={`py-3 border-b-2 font-medium text-sm ${pestanaActiva==='radar'?'border-[#0066CC] text-[#0066CC]':'border-transparent text-slate-400'}`}>🕸️ Puntos fuertes/débiles</button>
-              <button onClick={() => setPestanaActiva('recomendaciones')} className={`py-3 border-b-2 font-medium text-sm ${pestanaActiva==='recomendaciones'?'border-[#0066CC] text-[#0066CC]':'border-transparent text-slate-400'}`}>🎯 Recomendaciones ({recomendacionesColaborador.length})</button>
-              <button onClick={() => setPestanaActiva('seguimientos')} className={`py-3 border-b-2 font-medium text-sm ${pestanaActiva==='seguimientos'?'border-[#0066CC] text-[#0066CC]':'border-transparent text-slate-400'}`}>📋 Seguimientos ({seguimientosColaborador.length})</button>
+              <button onClick={() => setPestanaActiva('info')} className={`py-3 border-b-2 font-medium text-sm ${pestanaActiva==='info' ? 'border-[#0066CC] text-[#0066CC]' : 'border-transparent text-slate-400'}`}>📊 Métricas</button>
+              <button onClick={() => setPestanaActiva('radar')} className={`py-3 border-b-2 font-medium text-sm ${pestanaActiva==='radar' ? 'border-[#0066CC] text-[#0066CC]' : 'border-transparent text-slate-400'}`}>🕸️ Radar</button>
+              <button onClick={() => setPestanaActiva('recomendaciones')} className={`py-3 border-b-2 font-medium text-sm ${pestanaActiva==='recomendaciones' ? 'border-[#0066CC] text-[#0066CC]' : 'border-transparent text-slate-400'}`}>🎯 Recomendaciones ({recomendacionesColaborador.length})</button>
+              <button onClick={() => setPestanaActiva('seguimientos')} className={`py-3 border-b-2 font-medium text-sm ${pestanaActiva==='seguimientos' ? 'border-[#0066CC] text-[#0066CC]' : 'border-transparent text-slate-400'}`}>📋 Seguimientos ({seguimientosColaborador.length})</button>
             </div>
           </div>
           <div className="p-6">
             {pestanaActiva === 'info' && (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {Object.entries(datos).map(([key, value]) => {
-                  if (key === 'colaborador' || key === 'asesor' || key === 'unidad' || key === 'fechaObj') return null;
+                  if (['colaborador','asesor','unidad','fechaObj'].includes(key)) return null;
                   return (
                     <div key={key} className="bg-slate-50 p-3 rounded-lg">
                       <p className="text-[10px] text-slate-400 uppercase">{key}</p>
@@ -276,25 +259,15 @@ export default function FichaTecnica({ colaborador, tipo, seguimientos, recomend
                     <Radar name="Colaborador" dataKey="value" stroke="#0066CC" fill="#0066CC" fillOpacity={0.4} />
                   </RadarChart>
                 </ResponsiveContainer>
-                <p className="text-xs text-slate-500 mt-2 text-center">* Valores normalizados: a mayor área, mejor desempeño.</p>
+                <p className="text-xs text-slate-500 mt-2 text-center">* Valores normalizados: a mayor área, mejor desempeño (No Conformidades se invierten).</p>
               </div>
             )}
             {pestanaActiva === 'recomendaciones' && (
               <div className="space-y-3">
                 {recomendacionesColaborador.map((rec, idx) => (
-                  <div key={idx} className={`p-4 rounded-lg border ${
-                    rec.nivel === 'URGENTE' ? 'bg-red-50 border-red-200' :
-                    rec.nivel === 'CRÍTICO' ? 'bg-orange-50 border-orange-200' :
-                    rec.nivel === 'ALTO' ? 'bg-amber-50 border-amber-200' :
-                    'bg-emerald-50 border-emerald-200'
-                  }`}>
+                  <div key={idx} className={`p-4 rounded-lg border ${rec.nivel === 'URGENTE' ? 'bg-red-50 border-red-200' : rec.nivel === 'CRÍTICO' ? 'bg-orange-50 border-orange-200' : rec.nivel === 'ALTO' ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
                     <div className="flex items-center gap-2 mb-2">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
-                        rec.nivel === 'URGENTE' ? 'bg-red-100 text-red-700' :
-                        rec.nivel === 'CRÍTICO' ? 'bg-orange-100 text-orange-700' :
-                        rec.nivel === 'ALTO' ? 'bg-amber-100 text-amber-700' :
-                        'bg-emerald-100 text-emerald-700'
-                      }`}>{rec.nivel}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${rec.nivel === 'URGENTE' ? 'bg-red-100 text-red-700' : rec.nivel === 'CRÍTICO' ? 'bg-orange-100 text-orange-700' : rec.nivel === 'ALTO' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>{rec.nivel}</span>
                       <span className="text-xs text-slate-500">{rec.area}</span>
                     </div>
                     <p className="text-sm font-medium mb-2">{rec.sugerencia}</p>
@@ -309,10 +282,10 @@ export default function FichaTecnica({ colaborador, tipo, seguimientos, recomend
                   <div key={idx} className="bg-white border border-slate-200 rounded-lg p-4">
                     <div className="flex justify-between items-start mb-2">
                       <span className="text-xs font-bold text-slate-400">{new Date(seg.fechaRegistro).toLocaleDateString()}</span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${seg.estado==='COMPLETADO'?'bg-emerald-100 text-emerald-700':'bg-amber-100 text-amber-700'}`}>{seg.estado}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${seg.estado === 'COMPLETADO' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{seg.estado}</span>
                     </div>
-                    {seg.notas && <p className="text-sm mb-2">{seg.notas}</p>}
-                    {seg.acuerdos && <p className="text-sm text-slate-600">{seg.acuerdos}</p>}
+                    {seg.notas && <p className="text-sm"><span className="font-semibold">Notas:</span> {seg.notas}</p>}
+                    {seg.acuerdos && <p className="text-sm"><span className="font-semibold">Acuerdos:</span> {seg.acuerdos}</p>}
                   </div>
                 ))}
               </div>
