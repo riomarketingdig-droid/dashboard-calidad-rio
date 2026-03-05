@@ -1,4 +1,4 @@
-﻿import { getCoordinacionData, getAgendamientoData, getSatisfaccionData, getColaboradoresData } from '../../lib/googleSheets';
+﻿import { getCoordinacionData, getAgendamientoData } from '../../lib/googleSheets';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -6,169 +6,146 @@ export default async function handler(req, res) {
   }
 
   try {
-    const [coordinacion, agendamiento, satisfaccion, colaboradores] = await Promise.all([
+    const [coordinacion, agendamiento] = await Promise.all([
       getCoordinacionData(),
-      getAgendamientoData(),
-      getSatisfaccionData(),
-      getColaboradoresData()
+      getAgendamientoData()
     ]);
 
     const recomendaciones = [];
 
-    // ========== Reglas para Coordinación ==========
+    // ---- Coordinación ----
     coordinacion.forEach(agente => {
-      const colabInfo = colaboradores.find(c => c.nombre?.toLowerCase().includes(agente.colaborador?.toLowerCase() || ''));
-      const areaBase = 'Coordinación';
-
-      if (agente.ftr < 95) {
+      // URGENTE: reincidencias >= 2
+      if (agente.reincidencias >= 2) {
         recomendaciones.push({
-          id: `coord-${agente.colaborador}-ftr-${Date.now()}`,
-          nivel: agente.ftr < 90 ? 'URGENTE' : (agente.ftr < 95 ? 'CRÍTICO' : 'ALTO'),
-          area: areaBase,
+          id: `coord-${agente.colaborador}-reincidencia`,
+          nivel: 'URGENTE',
+          area: 'Coordinación',
           agente: agente.colaborador,
-          metrica: `FTR ${agente.ftr.toFixed(1)}%`,
-          sugerencia: 'Revisión diaria de registros con feedback inmediato',
+          metrica: `${agente.reincidencias} reincidencias`,
+          sugerencia: 'Aplicar plan de mejora según regla de reincidencia',
           responsable: 'Coordinador de Calidad',
-          plazo: '1 semana',
-          fechaLimite: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          feedback: '',
-          acciones: ['Auditar 5 registros diarios', 'Retroalimentación en el momento']
+          plazo: '24 horas',
+          fechaLimite: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          feedback: ''
         });
       }
-
-      if (agente.tiempoPromedio > 8) {
+      // CRÍTICO: FTR < 95%
+      else if (agente.ftr < 95) {
         recomendaciones.push({
-          id: `coord-${agente.colaborador}-tiempo-${Date.now()}`,
-          nivel: agente.tiempoPromedio > 10 ? 'URGENTE' : 'ALTO',
-          area: areaBase,
+          id: `coord-${agente.colaborador}-ftr`,
+          nivel: 'CRÍTICO',
+          area: 'Coordinación',
+          agente: agente.colaborador,
+          metrica: `FTR ${agente.ftr.toFixed(1)}%`,
+          sugerencia: 'Revisión diaria de 5 registros con feedback inmediato',
+          responsable: 'Coordinador de Calidad',
+          plazo: 'Inmediato',
+          fechaLimite: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          feedback: ''
+        });
+      }
+      // ALTO: tiempo > 8 min
+      else if (agente.tiempoPromedio > 8) {
+        recomendaciones.push({
+          id: `coord-${agente.colaborador}-tiempo`,
+          nivel: 'ALTO',
+          area: 'Coordinación',
           agente: agente.colaborador,
           metrica: `${agente.tiempoPromedio.toFixed(1)} min promedio`,
           sugerencia: 'Taller de atajos y optimización de tiempos',
           responsable: 'Coach de Procesos',
           plazo: 'Esta semana',
           fechaLimite: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          feedback: '',
-          acciones: ['Capacitación en atajos', 'Ejercicios de velocidad']
+          feedback: ''
         });
       }
-
-      if (agente.noConformidades > 2) {
+      // VERDE: buen desempeño (opcional)
+      else if (agente.ftr >= 98 && agente.tiempoPromedio <= 7 && agente.noConformidades === 0) {
         recomendaciones.push({
-          id: `coord-${agente.colaborador}-noconf-${Date.now()}`,
-          nivel: agente.noConformidades > 5 ? 'URGENTE' : 'CRÍTICO',
-          area: areaBase,
+          id: `coord-${agente.colaborador}-excelente`,
+          nivel: 'VERDE',
+          area: 'Coordinación',
           agente: agente.colaborador,
-          metrica: `${agente.noConformidades} no conformidades`,
-          sugerencia: 'Revisar causas raíz y establecer plan de acción correctiva',
-          responsable: 'Coordinador',
-          plazo: '3 días',
-          fechaLimite: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          feedback: '',
-          acciones: ['Análisis de causa raíz', 'Plan de acción']
+          metrica: `FTR ${agente.ftr.toFixed(1)}%`,
+          sugerencia: 'Destacar como ejemplo y compartir buenas prácticas',
+          responsable: 'Gerencia',
+          plazo: 'Este mes',
+          fechaLimite: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          feedback: ''
         });
       }
     });
 
-    // ========== Reglas para Agendamiento ==========
+    // ---- Agendamiento ----
     agendamiento.forEach(asesor => {
-      const colabInfo = colaboradores.find(c => c.nombre?.toLowerCase().includes(asesor.asesor?.toLowerCase() || ''));
-      const areaBase = 'Agendamiento';
-
-      if (asesor.oportunidadesAprovechadas < 75) {
+      // URGENTE: reincidencias >= 2
+      if (asesor.reincidencias >= 2) {
         recomendaciones.push({
-          id: `agen-${asesor.asesor}-oportunidades-${Date.now()}`,
-          nivel: asesor.oportunidadesAprovechadas < 70 ? 'URGENTE' : 'CRÍTICO',
-          area: areaBase,
+          id: `agen-${asesor.asesor}-reincidencia`,
+          nivel: 'URGENTE',
+          area: 'Agendamiento',
           agente: asesor.asesor,
-          metrica: `${asesor.oportunidadesAprovechadas.toFixed(1)}% oportunidades`,
-          sugerencia: 'Sesión de coaching en gestión de oportunidades',
-          responsable: 'Coordinador de Ventas',
-          plazo: '1 semana',
-          fechaLimite: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          feedback: '',
-          acciones: ['Role-play diario', 'Revisión de objeciones']
+          metrica: `${asesor.reincidencias} reincidencias`,
+          sugerencia: 'Aplicar acta administrativa según regla de reincidencia',
+          responsable: 'Coordinador',
+          plazo: '24 horas',
+          fechaLimite: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          feedback: ''
         });
       }
-
-      if (asesor.noConformidades > 2) {
+      // CRÍTICO: score < 70
+      else if (asesor.scoreTotal < 70) {
         recomendaciones.push({
-          id: `agen-${asesor.asesor}-noconf-${Date.now()}`,
-          nivel: asesor.noConformidades > 5 ? 'URGENTE' : 'CRÍTICO',
-          area: areaBase,
-          agente: asesor.asesor,
-          metrica: `${asesor.noConformidades} no conformidades`,
-          sugerencia: 'Revisión de procesos y checklist diario',
-          responsable: 'Auditor de Calidad',
-          plazo: '3 días',
-          fechaLimite: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          feedback: '',
-          acciones: ['Checklist obligatorio', 'Seguimiento']
-        });
-      }
-
-      if (asesor.scoreTotal < 70) {
-        recomendaciones.push({
-          id: `agen-${asesor.asesor}-score-${Date.now()}`,
-          nivel: asesor.scoreTotal < 60 ? 'URGENTE' : 'ALTO',
-          area: areaBase,
+          id: `agen-${asesor.asesor}-score`,
+          nivel: 'CRÍTICO',
+          area: 'Agendamiento',
           agente: asesor.asesor,
           metrica: `Score ${asesor.scoreTotal}`,
-          sugerencia: 'Plan de mejora personalizado',
-          responsable: 'Coach',
-          plazo: '2 semanas',
-          fechaLimite: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          feedback: '',
-          acciones: ['Diagnóstico', 'Sesiones individuales']
+          sugerencia: 'Programar sesión diaria de role-play enfocada en objeciones comunes',
+          responsable: 'Coordinador de Ventas',
+          plazo: 'Inmediato',
+          fechaLimite: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          feedback: ''
         });
       }
-    });
-
-    // ========== Reglas para Satisfacción (quejas) ==========
-    satisfaccion.forEach(queja => {
-      if (queja.status !== 'CERRADA') {
+      // ALTO: muchos hallazgos (por ejemplo, efectividadHallazgos < 90%)
+      else if (asesor.efectividadHallazgos < 90) {
         recomendaciones.push({
-          id: `sat-${queja.id}-${Date.now()}`,
+          id: `agen-${asesor.asesor}-hallazgos`,
           nivel: 'ALTO',
-          area: 'Satisfacción',
-          agente: queja.responsableFalla || queja.sucursal,
-          metrica: `Queja ${queja.noQueja} - ${queja.motivo}`,
-          sugerencia: queja.planAccion || 'Revisar causa raíz y cerrar queja',
-          responsable: queja.responsablePlan || 'Coordinador de Calidad',
+          area: 'Agendamiento',
+          agente: asesor.asesor,
+          metrica: `Efectividad Hallazgos ${asesor.efectividadHallazgos.toFixed(1)}%`,
+          sugerencia: 'Revisión de 5 llamadas grabadas por semana con feedback estructurado',
+          responsable: 'Auditor de Calidad',
           plazo: 'Esta semana',
           fechaLimite: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          feedback: '',
-          acciones: ['Cierre de queja', 'Seguimiento']
+          feedback: ''
         });
       }
-
-      // Si el tiempo de cierre excede 2 días (48 horas), recomendación
-      if (queja.tiempoCierre && queja.tiempoCierre > 48) {
+      // VERDE: score >= 90
+      else if (asesor.scoreTotal >= 90) {
         recomendaciones.push({
-          id: `sat-${queja.id}-tiempo-${Date.now()}`,
-          nivel: 'CRÍTICO',
-          area: 'Satisfacción',
-          agente: queja.responsableFalla || queja.sucursal,
-          metrica: `Tiempo cierre ${(queja.tiempoCierre/24).toFixed(1)} días`,
-          sugerencia: 'Agilizar proceso de cierre de quejas',
-          responsable: queja.responsablePlan || 'Coordinador',
-          plazo: 'Inmediato',
-          fechaLimite: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          feedback: '',
-          acciones: ['Revisar procedimiento', 'Capacitación']
+          id: `agen-${asesor.asesor}-excelente`,
+          nivel: 'VERDE',
+          area: 'Agendamiento',
+          agente: asesor.asesor,
+          metrica: `Score ${asesor.scoreTotal}`,
+          sugerencia: 'Destacar como mentor y compartir mejores prácticas',
+          responsable: 'Gerencia',
+          plazo: 'Este mes',
+          fechaLimite: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          feedback: ''
         });
       }
     });
 
-    // Eliminar duplicados (por si acaso)
-    const unique = new Map();
-    recomendaciones.forEach(r => unique.set(r.id, r));
-    const finalRecomendaciones = Array.from(unique.values());
-
-    // Ordenar por nivel
+    // Ordenar por prioridad
     const ordenNivel = { 'URGENTE': 1, 'CRÍTICO': 2, 'ALTO': 3, 'VERDE': 4 };
-    finalRecomendaciones.sort((a, b) => (ordenNivel[a.nivel] || 5) - (ordenNivel[b.nivel] || 5));
+    recomendaciones.sort((a, b) => ordenNivel[a.nivel] - ordenNivel[b.nivel]);
 
-    res.status(200).json(finalRecomendaciones);
+    res.status(200).json(recomendaciones);
   } catch (error) {
     console.error('Error generando recomendaciones:', error);
     res.status(500).json({ error: 'Error al generar recomendaciones' });

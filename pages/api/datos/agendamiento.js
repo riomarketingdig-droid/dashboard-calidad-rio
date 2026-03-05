@@ -10,6 +10,12 @@ function parseFecha(fechaStr) {
   return null;
 }
 
+function calcularSemaforoAgendamiento(score) {
+  if (score >= 90) return 'VERDE';
+  if (score >= 70) return 'AMARILLO';
+  return 'ROJO';
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ message: 'Method not allowed' });
@@ -18,32 +24,33 @@ export default async function handler(req, res) {
   try {
     const { fechaInicio, fechaFin } = req.query;
     const data = await getSheetData('AGENDAMIENTO_DETALLE!A2:O');
-    
-    let datos = data.map(row => ({
-      fecha: row[0],
-      fechaObj: parseFecha(row[0]),
-      mes: row[1],
-      semana: parseInt(row[2]),
-      asesor: row[3],
-      citasAgendadas: parseInt(row[4]) || 0,
-      oportunidadesAprovechadas: parseFloat(row[5]) || 0,
-      hallazgosCotizacion: parseFloat(row[6]) || 0,
-      hallazgosVenta: parseFloat(row[7]) || 0,
-      efectividadHallazgos: parseFloat(row[8]) || 0,
-      snc: parseInt(row[9]) || 0,
-      noConformidades: parseInt(row[10]) || 0,
-      efectividadAgendamiento: parseFloat(row[11]) || 0,
-      estatus: row[12],
-      scoreTotal: parseFloat(row[13]) || 0
-    }));
+
+    let datos = data.map(row => {
+      const score = row[13] ? parseFloat(row[13]) : 0;
+      return {
+        fecha: row[0],
+        fechaObj: parseFecha(row[0]),
+        mes: row[1],
+        semana: parseInt(row[2]),
+        asesor: row[3],
+        citasAgendadas: parseInt(row[4]) || 0,
+        oportunidadesAprovechadas: parseFloat(row[5]) || 0,
+        hallazgosCotizacion: parseFloat(row[6]) || 0,
+        hallazgosVenta: parseFloat(row[7]) || 0,
+        efectividadHallazgos: parseFloat(row[8]) || 0,
+        snc: parseInt(row[9]) || 0,
+        noConformidades: parseInt(row[10]) || 0,
+        efectividadAgendamiento: parseFloat(row[11]) || 0,
+        estatus: row[12],
+        scoreTotal: score,
+        semaforo: calcularSemaforoAgendamiento(score)
+      };
+    });
 
     if (fechaInicio && fechaFin) {
       const inicio = new Date(fechaInicio);
       const fin = new Date(fechaFin);
-      datos = datos.filter(d => {
-        if (!d.fechaObj) return false;
-        return d.fechaObj >= inicio && d.fechaObj <= fin;
-      });
+      datos = datos.filter(d => d.fechaObj && d.fechaObj >= inicio && d.fechaObj <= fin);
     }
 
     datos = datos.map(({ fechaObj, ...rest }) => rest);

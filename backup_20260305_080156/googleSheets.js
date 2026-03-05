@@ -12,6 +12,7 @@ const auth = new google.auth.GoogleAuth({
 
 const sheets = google.sheets({ version: 'v4', auth });
 
+// ========== LECTURA GENÉRICA ==========
 export async function getSheetData(range) {
   try {
     const response = await sheets.spreadsheets.values.get({
@@ -25,6 +26,7 @@ export async function getSheetData(range) {
   }
 }
 
+// ========== ESCRITURA ==========
 export async function appendSheetRow(range, values) {
   try {
     await sheets.spreadsheets.values.append({
@@ -55,12 +57,12 @@ export async function updateSheetRow(range, values) {
   }
 }
 
-// ─── GERENCIAL ─────────────────────────────────────────────────
+// ========== GERENCIAL ==========
 export async function getGerencialData() {
   const data = await getSheetData('GERENCIAL_DATOS!A2:K');
   return data.map(row => ({
     fecha: row[0],
-    ano: parseInt(row[1]),
+    año: parseInt(row[1]),
     semana: row[2] ? parseInt(row[2]) : null,
     mes: row[3],
     trimestre: row[4],
@@ -73,34 +75,33 @@ export async function getGerencialData() {
   }));
 }
 
-// ─── COORDINACIÓN (unificado con endpoint) ─────────────────────
+// ========== COORDINACIÓN DETALLE ==========
+// Columnas: A:Fecha, B:Mes, C:Colaborador, D:Unidad, E:FTR, F:TiempoPromedio, G:CantidadRegistros, H:NoConformidades, I:SNC, J:SEMAFORO
 export async function getCoordinacionData() {
-  const data = await getSheetData('COORDINACION_DETALLE!A2:N'); // hasta columna N
+  const data = await getSheetData('COORDINACION_DETALLE!A2:J');
   return data.map(row => ({
-    fecha: row[0] || '',
-    mes: row[1] || '',
-    colaborador: row[2] || '',
-    unidad: row[3] || '',
+    fecha: row[0],
+    mes: row[1],
+    colaborador: row[2],
+    unidad: row[3],
     ftr: row[4] ? parseFloat(row[4]) : 0,
     tiempoPromedio: row[5] ? parseFloat(row[5]) : 0,
     cantidadRegistros: row[6] ? parseInt(row[6]) : 0,
     noConformidades: row[7] ? parseInt(row[7]) : 0,
     snc: row[8] ? parseInt(row[8]) : 0,
-    semaforo: row[9] || 'SIN DEFINIR',
-    reincidencias: row[10] ? parseInt(row[10]) : 0,
-    ultimaAccion: row[11] || '',
-    proximoSeguimiento: row[12] || ''
+    semaforo: row[9] || 'SIN DEFINIR'
   }));
 }
 
-// ─── AGENDAMIENTO (unificado con endpoint) ────────────────────
+// ========== AGENDAMIENTO DETALLE ==========
+// Columnas: A:Fecha, B:Mes, C:Semana, D:Asesor, E:CitasAgendadas, F:%Oportunidades, G:HallCotiz, H:HallVenta, I:%EfectAud, J:SNC, K:NoConf, L:%EfectAgend, M:Estatus, N:ScoreTotal
 export async function getAgendamientoData() {
-  const data = await getSheetData('AGENDAMIENTO_DETALLE!A2:O');
+  const data = await getSheetData('AGENDAMIENTO_DETALLE!A2:N');
   return data.map(row => ({
-    fecha: row[0] || '',
-    mes: row[1] || '',
-    semana: row[2] ? parseInt(row[2]) : 0,
-    asesor: row[3] || '',
+    fecha: row[0],
+    mes: row[1],
+    semana: row[2] ? parseInt(row[2]) : null,
+    asesor: row[3],
     citasAgendadas: row[4] ? parseInt(row[4]) : 0,
     oportunidadesAprovechadas: row[5] ? parseFloat(row[5]) : 0,
     hallazgosCotizacion: row[6] ? parseFloat(row[6]) : 0,
@@ -110,15 +111,45 @@ export async function getAgendamientoData() {
     noConformidades: row[10] ? parseInt(row[10]) : 0,
     efectividadAgendamiento: row[11] ? parseFloat(row[11]) : 0,
     estatus: row[12] || '',
-    scoreTotal: row[13] ? parseFloat(row[13]) : 0,
-    // opcionales si existen más columnas
-    reincidencias: row[14] ? parseInt(row[14]) : 0,
-    ultimaAuditoria: row[15] || '',
-    proximaRevision: row[16] || ''
+    scoreTotal: row[13] ? parseFloat(row[13]) : 0
   }));
 }
 
-// ─── COLABORADORES ─────────────────────────────────────────────
+// ========== SATISFACCIÓN CLIENTE ==========
+// Columnas según tu estructura: 
+// A:NO, B:NO_QUEJA, C:Mes, D:Semana, E:FechaRecepcion, F:Sucursal, G:Empresa, H:Procedencia, I:Proceso, J:SubProceso, K:Motivo, L:Comentarios, M:CausaRaiz, N:PlanAccion, O:ResponsablePlan, P:Descripcion, Q:CITA, R:Modalidad, S:ResponsableFalla, T:AccionCorrectiva, U:Status, V:FechaCierre, W:TiempoCierre
+export async function getSatisfaccionData() {
+  const data = await getSheetData('SATISFACCION_CLIENTE!A2:W');
+  return data.map((row, index) => ({
+    id: `Q-${index + 1}`,
+    noQueja: row[0] || '',
+    noQuejaCompleto: row[1] || '',
+    mes: row[2] || '',
+    semana: row[3] ? parseInt(row[3]) : null,
+    fechaRecepcion: row[4] || '',
+    sucursal: row[5] || '',
+    empresa: row[6] || '',
+    procedencia: row[7] || '',
+    proceso: row[8] || '',
+    subProceso: row[9] || '',
+    motivo: row[10] || '',
+    comentarios: row[11] || '',
+    causaRaiz: row[12] || '',
+    planAccion: row[13] || '',
+    responsablePlan: row[14] || '',
+    descripcion: row[15] || '',
+    cita: row[16] || '',
+    modalidad: row[17] || '',
+    responsableFalla: row[18] || '',
+    accionCorrectiva: row[19] || '',
+    status: row[20] || 'PENDIENTE',
+    fechaCierre: row[21] || '',
+    tiempoCierre: row[22] ? parseFloat(row[22]) : null
+  }));
+}
+
+// ========== COLABORADORES ==========
+// Columnas: A:Nombre, B:Area, C:Unidad, D:Puesto, E:JefeInmediato, F:EmailColaborador, G:EmailJefe, H:FechaIngreso, I:Activo
 export async function getColaboradoresData() {
   const data = await getSheetData('COLABORADORES!A2:I');
   return data.map(row => ({
@@ -134,7 +165,24 @@ export async function getColaboradoresData() {
   }));
 }
 
-// ─── SEGUIMIENTO ───────────────────────────────────────────────
+// ========== SEGUIMIENTO IA (Recomendaciones) ==========
+// Pestaña SEGUIMIENTO_IA: A:Fecha, B:Colaborador, C:NivelRiesgo, D:KPI, E:PlanAccion, F:Compromiso, G:Estatus
+export async function getRecomendacionesData() {
+  const data = await getSheetData('SEGUIMIENTO_IA!A2:G');
+  return data.map((row, idx) => ({
+    id: `rec-${idx}`,
+    fecha: row[0] || '',
+    colaborador: row[1] || '',
+    nivel: row[2] || 'ALTO',
+    kpi: row[3] || '',
+    plan: row[4] || '',
+    compromiso: row[5] || '',
+    estatus: row[6] || 'PENDIENTE'
+  }));
+}
+
+// ========== SEGUIMIENTO (sesiones) ==========
+// Columnas: A:ID, B:FechaRegistro, C:Colaborador, D:Area, E:Nivel, F:Metrica, G:Notas, H:Acuerdos, I:FechaCompromiso, J:Responsable, K:Estado, L:FechaCierre, M:QuienCerro, N:FeedbackIA, O:EmailEnviado, P:RecomendacionID
 export async function getSeguimientoData() {
   const data = await getSheetData('SEGUIMIENTO!A2:P');
   return data.map((row, idx) => ({
