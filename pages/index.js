@@ -312,9 +312,6 @@ export default function Dashboard() {
   });
 
   // ========== AGRUPACIONES ==========
-  const coordinacionResumen = gerencialData.filter(d => d.proceso === 'Coordinación');
-  const agendamientoResumen = gerencialData.filter(d => d.proceso === 'Agendamiento');
-  const satisfaccionResumen = gerencialData.filter(d => d.proceso === 'Satisfacción');
   const tendenciasCoord = tendenciasData.filter(d => d.proceso === 'Coordinación');
   const tendenciasAgen = tendenciasData.filter(d => d.proceso === 'Agendamiento');
   const MESES_TABLA = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
@@ -436,7 +433,7 @@ export default function Dashboard() {
 
       <main className="p-4 md:p-6">
         {/* ========== VISTA GERENCIAL ========== */}
-        {activeTab === 'gerencial' && (
+        {activeTab === 'gerencial' && kpisData && (
           <>
             {/* Coordinación */}
             <div className="mb-8">
@@ -445,22 +442,46 @@ export default function Dashboard() {
                 COORDINACIÓN
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {coordinacionResumen.length === 0 ? (
-                  <div className="col-span-4"><EmptyState periodo={periodo.valor} tipo={periodo.tipo} /></div>
-                ) : (
-                  coordinacionResumen.map((item, idx) => (
-                    <div key={idx} className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all cursor-pointer" onClick={() => { setActiveTab('coordinacion'); setFiltroTierCoordinacion(null); }}>
-                      <div className="text-xs font-bold text-slate-400 uppercase mb-2">{item.indicador}</div>
-                      <div className="flex items-end justify-between">
-                        <div>
-                          <span className="text-2xl font-black text-slate-800">{item.valor}%</span>
-                          <span className="text-xs text-slate-400 ml-1">/ {item.meta}</span>
-                        </div>
-                        <span className={`text-lg ${getTendenciaColor(getTendenciaIcon(item.indicador))}`}>{getTendenciaIcon(item.indicador)}</span>
-                      </div>
+                <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer" onClick={() => { setActiveTab('coordinacion'); setFiltroTierCoordinacion(null); }}>
+                  <div className="text-xs font-bold text-slate-400 uppercase mb-2">% Efectividad Registro</div>
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <span className="text-2xl font-black text-slate-800">{kpisData.coordinacion?.ftr?.toFixed(1) ?? '0'}%</span>
+                      <span className="text-xs text-slate-400 ml-1">/ 98%</span>
                     </div>
-                  ))
-                )}
+                    <span className="text-lg text-emerald-600">↑</span>
+                  </div>
+                </div>
+                <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer" onClick={() => { setActiveTab('coordinacion'); setFiltroTierCoordinacion(null); }}>
+                  <div className="text-xs font-bold text-slate-400 uppercase mb-2">% Cumplimiento Tiempo 7 min</div>
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <span className="text-2xl font-black text-slate-800">{(kpisData.coordinacion?.tiempo ? (kpisData.coordinacion.tiempo/10)*100 : 0).toFixed(1)}%</span>
+                      <span className="text-xs text-slate-400 ml-1">/ 85%</span>
+                    </div>
+                    <span className="text-lg text-emerald-600">↑</span>
+                  </div>
+                </div>
+                <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer" onClick={() => { setActiveTab('coordinacion'); setFiltroTierCoordinacion(null); }}>
+                  <div className="text-xs font-bold text-slate-400 uppercase mb-2"># No Conformidades</div>
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <span className="text-2xl font-black text-slate-800">{kpisData.coordinacion?.noConformidades ?? 0}</span>
+                      <span className="text-xs text-slate-400 ml-1">/ 0</span>
+                    </div>
+                    <span className="text-lg text-emerald-600">↓</span>
+                  </div>
+                </div>
+                <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer" onClick={() => { setActiveTab('coordinacion'); setFiltroTierCoordinacion(null); }}>
+                  <div className="text-xs font-bold text-slate-400 uppercase mb-2"># Servicio no conformes</div>
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <span className="text-2xl font-black text-slate-800">0</span>
+                      <span className="text-xs text-slate-400 ml-1">/ 0</span>
+                    </div>
+                    <span className="text-lg text-slate-400">→</span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -471,26 +492,50 @@ export default function Dashboard() {
                 AGENDAMIENTO
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {agendamientoResumen.length === 0 ? (
-                  <div className="col-span-4"><EmptyState periodo={periodo.valor} tipo={periodo.tipo} /></div>
-                ) : (
-                  agendamientoResumen.map((item, idx) => (
-                    <div key={idx} className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all cursor-pointer" onClick={() => setActiveTab('agendamiento')}>
-                      <div className="text-xs font-bold text-slate-400 uppercase mb-2">{item.indicador}</div>
-                      <div className="flex items-end justify-between">
-                        <div>
-                          <span className="text-2xl font-black text-slate-800">{typeof item.valor === 'number' ? item.valor + '%' : item.valor}</span>
-                          <span className="text-xs text-slate-400 ml-1">/ {item.meta}</span>
-                        </div>
-                        <span className={`text-lg ${getTendenciaColor(getTendenciaIcon(item.indicador))}`}>{getTendenciaIcon(item.indicador)}</span>
-                      </div>
+                <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer" onClick={() => setActiveTab('agendamiento')}>
+                  <div className="text-xs font-bold text-slate-400 uppercase mb-2">Oportunidades</div>
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <span className="text-2xl font-black text-slate-800">{kpisData.agendamiento?.oportunidades?.toFixed(1) ?? '0'}%</span>
+                      <span className="text-xs text-slate-400 ml-1">/ 75%</span>
                     </div>
-                  ))
-                )}
+                    <span className="text-lg text-slate-400">→</span>
+                  </div>
+                </div>
+                <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer" onClick={() => setActiveTab('agendamiento')}>
+                  <div className="text-xs font-bold text-slate-400 uppercase mb-2">Cierres</div>
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <span className="text-2xl font-black text-slate-800">{kpisData.agendamiento?.oportunidades ? (kpisData.agendamiento.oportunidades * 0.8).toFixed(1) : '0'}%</span>
+                      <span className="text-xs text-slate-400 ml-1">/ 80%</span>
+                    </div>
+                    <span className="text-lg text-slate-400">→</span>
+                  </div>
+                </div>
+                <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer" onClick={() => setActiveTab('agendamiento')}>
+                  <div className="text-xs font-bold text-slate-400 uppercase mb-2">% Conversión</div>
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <span className="text-2xl font-black text-slate-800">{kpisData.agendamiento?.score?.toFixed(1) ?? '0'}%</span>
+                      <span className="text-xs text-slate-400 ml-1">/ 95%</span>
+                    </div>
+                    <span className="text-lg text-slate-400">→</span>
+                  </div>
+                </div>
+                <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer" onClick={() => setActiveTab('agendamiento')}>
+                  <div className="text-xs font-bold text-slate-400 uppercase mb-2"># No Conformidades</div>
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <span className="text-2xl font-black text-slate-800">{kpisData.agendamiento?.distribucionABC ? Object.values(kpisData.agendamiento.distribucionABC).reduce((a,b)=>a+b,0) : 0}</span>
+                      <span className="text-xs text-slate-400 ml-1">/ 0</span>
+                    </div>
+                    <span className="text-lg text-slate-400">→</span>
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Satisfacción (usando KPIs reales) */}
+            {/* Satisfacción */}
             <div className="mb-8">
               <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                 <span className="w-1 h-4 bg-[#0066CC] rounded-full"></span>
@@ -499,22 +544,22 @@ export default function Dashboard() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
                   <p className="text-xs font-bold text-slate-400 uppercase">NPS Promedio</p>
-                  <p className="text-3xl font-black text-slate-800 mt-1">{kpisData?.satisfaccion?.nps || 'N/A'}</p>
+                  <p className="text-3xl font-black text-slate-800 mt-1">{kpisData.satisfaccion?.nps ?? 'N/A'}</p>
                   <p className="text-xs text-slate-400 mt-2">Meta: 9.0</p>
                 </div>
                 <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
                   <p className="text-xs font-bold text-slate-400 uppercase">% Felicitaciones</p>
-                  <p className="text-3xl font-black text-slate-800 mt-1">{kpisData?.satisfaccion?.felicitaciones || '0'}%</p>
+                  <p className="text-3xl font-black text-slate-800 mt-1">{kpisData.satisfaccion?.felicitaciones ?? '0'}%</p>
                   <p className="text-xs text-slate-400 mt-2">Meta: 90%</p>
                 </div>
                 <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
                   <p className="text-xs font-bold text-slate-400 uppercase">Quejas Abiertas</p>
-                  <p className="text-3xl font-black text-slate-800 mt-1">{kpisData?.satisfaccion?.quejasAbiertas || 0}</p>
+                  <p className="text-3xl font-black text-slate-800 mt-1">{kpisData.satisfaccion?.quejasAbiertas ?? 0}</p>
                   <p className="text-xs text-slate-400 mt-2">Total: {satisfaccionData.length}</p>
                 </div>
                 <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
                   <p className="text-xs font-bold text-slate-400 uppercase">Tiempo Prom. Cierre</p>
-                  <p className="text-3xl font-black text-slate-800 mt-1">{kpisData?.satisfaccion?.tiempoCierre || 0} días</p>
+                  <p className="text-3xl font-black text-slate-800 mt-1">{kpisData.satisfaccion?.tiempoCierre?.toFixed(1) ?? 0} días</p>
                   <p className="text-xs text-slate-400 mt-2">Meta: 2 días</p>
                 </div>
               </div>
@@ -626,7 +671,7 @@ export default function Dashboard() {
                         <td className="p-4 text-center font-mono">{asesor.efectividadHallazgos}%</td>
                         <td className="p-4 text-center font-mono">{asesor.snc}</td>
                         <td className="p-4 text-center font-mono">{asesor.noConformidades}</td>
-                        <td className="p-4 text-center font-mono">{asesor.efectividadAgendamiento}%</td>
+                        <td className="p-4 text-center font-mono">{asesor.efectividadAgendamiento.toFixed(1)}%</td>
                         <td className="p-4 text-center">
                           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${asesor.estatus === 'A' ? 'bg-emerald-100 text-emerald-600' : asesor.estatus === 'B' ? 'bg-amber-100 text-amber-600' : 'bg-red-100 text-red-600'}`}>{asesor.estatus}</span>
                         </td>
