@@ -4,6 +4,7 @@ import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Responsi
 export default function FichaTecnica({ colaborador, tipo, seguimientos, recomendaciones, onClose }) {
   const [pestanaActiva, setPestanaActiva] = useState('info');
 
+  // ========== SEMÁFORO ==========
   const calcularSemaforo = (datos) => {
     if (tipo === 'coordinacion') {
       const ftr = datos.ftr || 0;
@@ -35,9 +36,11 @@ export default function FichaTecnica({ colaborador, tipo, seguimientos, recomend
     }
   };
 
-  // Vista para quejas
+  // ========== VISTA PARA QUEJAS ==========
   if (tipo === 'queja' && colaborador.queja) {
     const q = colaborador.queja;
+    
+    // Calcular tiempo de resolución en DÍAS (ya que en sheets solo hay fechas)
     const diasResolucion = q.fechaCierre && q.fechaRecepcion
       ? Math.round((new Date(q.fechaCierre) - new Date(q.fechaRecepcion)) / (1000 * 60 * 60 * 24))
       : null;
@@ -71,10 +74,11 @@ export default function FichaTecnica({ colaborador, tipo, seguimientos, recomend
             <button onClick={onClose} className="text-slate-400 hover:text-slate-600">✕</button>
           </div>
 
+          {/* Pestañas de queja */}
           <div className="border-b border-slate-100 px-6">
             <div className="flex space-x-6">
               <button onClick={() => setPestanaActiva('info')} className={`py-3 border-b-2 font-medium text-sm ${pestanaActiva==='info' ? 'border-[#0066CC] text-[#0066CC]' : 'border-transparent text-slate-400'}`}>📋 Detalle</button>
-              <button onClick={() => setPestanaActiva('acciones')} className={`py-3 border-b-2 font-medium text-sm ${pestanaActiva==='acciones' ? 'border-[#0066CC] text-[#0066CC]' : 'border-transparent text-slate-400'}`}>🎯 Plan</button>
+              <button onClick={() => setPestanaActiva('acciones')} className={`py-3 border-b-2 font-medium text-sm ${pestanaActiva==='acciones' ? 'border-[#0066CC] text-[#0066CC]' : 'border-transparent text-slate-400'}`}>🎯 Plan de acción</button>
               <button onClick={() => setPestanaActiva('historial')} className={`py-3 border-b-2 font-medium text-sm ${pestanaActiva==='historial' ? 'border-[#0066CC] text-[#0066CC]' : 'border-transparent text-slate-400'}`}>📊 Historial ({seguimientosRelacionados.length})</button>
             </div>
           </div>
@@ -170,7 +174,7 @@ export default function FichaTecnica({ colaborador, tipo, seguimientos, recomend
     );
   }
 
-  // Vista para colaboradores
+  // ========== VISTA PARA COLABORADORES (con radar corregido) ==========
   if (tipo === 'coordinacion' || tipo === 'agendamiento') {
     const datos = colaborador;
     const recomendacionesColaborador = recomendaciones?.filter(r => 
@@ -180,9 +184,11 @@ export default function FichaTecnica({ colaborador, tipo, seguimientos, recomend
       recomendacionesColaborador.some(r => r.id === s.recomendacionId)
     ) || [];
 
+    // Preparar datos para radar: valores normalizados 0-100, donde mayor = mejor.
+    // Para No Conformidades, invertimos: si noConf es 0, vale 100; si es 5, vale 0.
     const radarData = [];
     if (tipo === 'coordinacion') {
-      const maxNoConf = 5;
+      const maxNoConf = 5; // asumimos que 5 es el máximo tolerable
       const valorNoConf = datos.noConformidades !== undefined
         ? Math.max(0, 100 - (datos.noConformidades / maxNoConf) * 100)
         : 100;

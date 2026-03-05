@@ -1,4 +1,5 @@
 ﻿import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/router';
 import PeriodSelector from '../components/layout/PeriodSelector';
 import FloatingUploadButton from '../components/upload/FloatingUploadButton';
 import SkeletonTable from '../components/ui/SkeletonTable';
@@ -8,6 +9,7 @@ import FichaTecnica from '../components/ui/FichaTecnica';
 import SatisfaccionFicha from '../components/ui/SatisfaccionFicha';
 
 export default function Dashboard() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('gerencial');
 
   // Estados principales
@@ -19,7 +21,6 @@ export default function Dashboard() {
   const [recomendaciones, setRecomendaciones] = useState([]);
   const [colaboradores, setColaboradores] = useState([]);
   const [seguimientos, setSeguimientos] = useState({});
-  const [kpisData, setKpisData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Filtros
@@ -141,7 +142,6 @@ export default function Dashboard() {
         recs,
         tendencias,
         satisfaccion,
-        kpis,
         cols
       ] = await Promise.all([
         fetch(`/api/datos/gerencial${gerencialQs}`).then(res => res.json()),
@@ -150,7 +150,6 @@ export default function Dashboard() {
         fetch('/api/recomendaciones').then(res => res.json()),
         fetch(`/api/datos/tendencias?ano=${ano}`).then(res => res.json()),
         fetch(`/api/datos/satisfaccion${qs}`).then(res => res.json()),
-        fetch('/api/datos/kpis').then(res => res.json()),
         fetch('/api/datos/colaboradores').then(res => res.json())
       ]);
 
@@ -160,7 +159,6 @@ export default function Dashboard() {
       setRecomendaciones(Array.isArray(recs) ? recs : []);
       setTendenciasData(Array.isArray(tendencias) ? tendencias : []);
       setSatisfaccionData(Array.isArray(satisfaccion) ? satisfaccion : []);
-      setKpisData(kpis);
       setColaboradores(Array.isArray(cols) ? cols : []);
     } catch (error) {
       console.error('Error cargando datos:', error);
@@ -488,33 +486,29 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Satisfacción con KPIs reales */}
+            {/* Satisfacción */}
             <div className="mb-8">
               <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                 <span className="w-1 h-4 bg-[#0066CC] rounded-full"></span>
                 SATISFACCIÓN
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
-                  <p className="text-xs font-bold text-slate-400 uppercase">NPS Promedio</p>
-                  <p className="text-3xl font-black text-slate-800 mt-1">{kpisData?.satisfaccion?.nps || 'N/A'}</p>
-                  <p className="text-xs text-slate-400 mt-2">Meta: 9.0</p>
-                </div>
-                <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
-                  <p className="text-xs font-bold text-slate-400 uppercase">% Felicitaciones</p>
-                  <p className="text-3xl font-black text-emerald-600 mt-1">{kpisData?.satisfaccion?.felicitaciones || '0'}%</p>
-                  <p className="text-xs text-slate-400 mt-2">Meta: 90%</p>
-                </div>
-                <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
-                  <p className="text-xs font-bold text-slate-400 uppercase">Quejas Abiertas</p>
-                  <p className="text-3xl font-black text-amber-600 mt-1">{kpisData?.satisfaccion?.quejasAbiertas || 0}</p>
-                  <p className="text-xs text-slate-400 mt-2">Total: {satisfaccionData.length}</p>
-                </div>
-                <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
-                  <p className="text-xs font-bold text-slate-400 uppercase">Tiempo Prom. Cierre</p>
-                  <p className="text-3xl font-black text-slate-800 mt-1">{kpisData?.satisfaccion?.tiempoCierre || '0'} días</p>
-                  <p className="text-xs text-slate-400 mt-2">Meta: 2 días</p>
-                </div>
+                {satisfaccionResumen.length === 0 ? (
+                  <div className="col-span-4"><EmptyState periodo={periodo.valor} tipo={periodo.tipo} /></div>
+                ) : (
+                  satisfaccionResumen.map((item, idx) => (
+                    <div key={idx} className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all cursor-pointer" onClick={() => setActiveTab('satisfaccion')}>
+                      <div className="text-xs font-bold text-slate-400 uppercase mb-2">{item.indicador}</div>
+                      <div className="flex items-end justify-between">
+                        <div>
+                          <span className="text-2xl font-black text-slate-800">{item.valor}</span>
+                          <span className="text-xs text-slate-400 ml-1">/ {item.meta}</span>
+                        </div>
+                        <span className={`text-lg ${getTendenciaColor(getTendenciaIcon(item.indicador))}`}>{getTendenciaIcon(item.indicador)}</span>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </>
@@ -641,6 +635,20 @@ export default function Dashboard() {
         {/* ========== VISTA SATISFACCIÓN ========== */}
         {activeTab === 'satisfaccion' && (
           <div className="space-y-6">
+            {/* Tarjetas KPI (desde gerencial) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {['NPS Promedio', '% Felicitaciones Clientes', 'Quejas Abiertas', 'Tiempo Prom. Cierre (días)'].map((kpi, idx) => {
+                const item = satisfaccionResumen.find(d => d.indicador === kpi) || { valor: 'N/A', meta: '-' };
+                return (
+                  <div key={idx} className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
+                    <p className="text-xs font-bold text-slate-400 uppercase">{kpi}</p>
+                    <p className="text-3xl font-black text-slate-800 mt-1">{item.valor}</p>
+                    <p className="text-xs text-slate-400 mt-2">Meta: {item.meta}</p>
+                  </div>
+                );
+              })}
+            </div>
+
             {/* Filtros con etiquetas */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
               <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">🔍 Filtrar quejas <InfoTooltip content="Filtra por sucursal, proceso, estado, mes o semana" /></h3>
@@ -663,7 +671,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Listado de quejas */}
+            {/* Listado de quejas (mostrando el número de queja como identificador) */}
             <div className="space-y-3">
               {satisfaccionFiltrada.length === 0 ? <EmptyState periodo={periodo.valor} tipo={periodo.tipo} /> : (
                 satisfaccionFiltrada.map((queja, idx) => (
@@ -699,15 +707,15 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Planes por nivel */}
+            {/* Planes por nivel (igual que antes) */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
               <h3 className="text-sm font-bold text-slate-800 mb-4">📊 PLANES DE ACCIÓN POR NIVEL</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
-                  { nivel: 'URGENTE', accion: 'Intervención diaria', meta: 'Subir a amarillo en 2 semanas', count: recomendaciones.filter(r => r.nivel === 'URGENTE').length },
-                  { nivel: 'CRÍTICO', accion: 'Coaching intensivo', meta: 'Subir a amarillo en 3 semanas', count: recomendaciones.filter(r => r.nivel === 'CRÍTICO').length },
-                  { nivel: 'ALTO', accion: 'Coaching semanal', meta: 'Subir a verde en 1 mes', count: recomendaciones.filter(r => r.nivel === 'ALTO').length },
-                  { nivel: 'VERDE', accion: 'Mentoría a otros', meta: 'Mantener y compartir', count: recomendaciones.filter(r => r.nivel === 'VERDE').length },
+                  { nivel: 'URGENTE', color: 'red', accion: 'Intervención diaria', meta: 'Subir a amarillo en 2 semanas', count: recomendaciones.filter(r => r.nivel === 'URGENTE').length },
+                  { nivel: 'CRÍTICO', color: 'orange', accion: 'Coaching intensivo', meta: 'Subir a amarillo en 3 semanas', count: recomendaciones.filter(r => r.nivel === 'CRÍTICO').length },
+                  { nivel: 'ALTO', color: 'amber', accion: 'Coaching semanal', meta: 'Subir a verde en 1 mes', count: recomendaciones.filter(r => r.nivel === 'ALTO').length },
+                  { nivel: 'VERDE', color: 'emerald', accion: 'Mentoría a otros', meta: 'Mantener y compartir', count: recomendaciones.filter(r => r.nivel === 'VERDE').length },
                 ].map((item, idx) => (
                   <div key={idx} className={`p-4 rounded-lg border ${item.nivel === 'URGENTE' ? 'bg-red-50 border-red-200' : item.nivel === 'CRÍTICO' ? 'bg-orange-50 border-orange-200' : item.nivel === 'ALTO' ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'} cursor-pointer hover:shadow-md`} onClick={() => setFiltroNivel(item.nivel)}>
                     <div className="flex justify-between items-center mb-2">
@@ -721,7 +729,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Listado de recomendaciones */}
+            {/* Listado de recomendaciones (la misma estructura de la versión 2 pero filtrada por área) */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
               <div className="p-4 bg-slate-50 border-b border-slate-100">
                 <div className="flex items-center justify-between">
@@ -738,6 +746,7 @@ export default function Dashboard() {
                     const segs = seguimientos[rec.id] || [];
                     return (
                       <div key={rec.id} id={`recomendacion-${rec.id}`} className={`mb-4 rounded-xl border transition-all ${completada ? 'bg-slate-50 border-slate-200 opacity-70' : rec.nivel === 'URGENTE' ? 'bg-red-50 border-red-200' : rec.nivel === 'CRÍTICO' ? 'bg-orange-50 border-orange-200' : rec.nivel === 'ALTO' ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
+                        {/* Cabecera (igual que en versión 2) */}
                         <div className="p-4">
                           <div className="flex items-start justify-between mb-2">
                             <div className="flex items-center gap-2">
@@ -777,6 +786,7 @@ export default function Dashboard() {
                               ))}
                             </div>
                           )}
+                          {/* Botones */}
                           <div className="flex flex-wrap justify-end gap-2">
                             <button onClick={() => generarFeedbackIA(rec)} disabled={rec.generandoFeedback} className="text-xs bg-[#0066CC] hover:bg-[#0052a3] text-white px-3 py-1.5 rounded-lg flex items-center gap-1 disabled:opacity-50">
                               <svg xmlns="http://www.w3.org/2000/svg" className={`h-3 w-3 ${rec.generandoFeedback ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
@@ -792,6 +802,7 @@ export default function Dashboard() {
                             </button>
                           </div>
                         </div>
+                        {/* Panel de notas */}
                         {abierto && (
                           <div className="border-t border-white/50 bg-white/70 p-4 rounded-b-xl">
                             <h5 className="text-xs font-black text-slate-600 uppercase tracking-wider mb-3">📝 Sesión de retroalimentación</h5>
