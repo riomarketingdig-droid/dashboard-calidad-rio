@@ -3,6 +3,7 @@
 export default function SatisfaccionFicha({ queja, onVerDetalle }) {
   const [expandida, setExpandida] = useState(false);
 
+  // Calcular días de resolución si existe fecha de cierre
   const diasResolucion = queja.fechaCierre && queja.fechaRecepcion
     ? Math.round((new Date(queja.fechaCierre) - new Date(queja.fechaRecepcion)) / (1000 * 60 * 60 * 24))
     : null;
@@ -11,7 +12,7 @@ export default function SatisfaccionFicha({ queja, onVerDetalle }) {
     <div className="bg-white rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
       <div className="p-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span className="text-xs font-black text-slate-400">{queja.noQueja || queja.noQuejaCompleto || 'N/A'}</span>
+          <span className="text-xs font-black text-slate-400">{queja.noQueja || queja.noQuejaCompleto}</span>
           <button
             onClick={() => onVerDetalle(queja)}
             className="text-sm font-medium text-[#0066CC] hover:underline"

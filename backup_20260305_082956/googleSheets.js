@@ -55,27 +55,27 @@ export async function updateSheetRow(range, values) {
   }
 }
 
-// GERENCIAL
+// ─── GERENCIAL ─────────────────────────────────────────────────
 export async function getGerencialData() {
   const data = await getSheetData('GERENCIAL_DATOS!A2:K');
   return data.map(row => ({
-    fecha: row[0] || '',
-    ano: row[1] ? parseInt(row[1]) : null,
+    fecha: row[0],
+    ano: parseInt(row[1]),
     semana: row[2] ? parseInt(row[2]) : null,
-    mes: row[3] || '',
-    trimestre: row[4] || '',
-    indicador: row[5] || '',
-    proceso: row[6] || '',
+    mes: row[3],
+    trimestre: row[4],
+    indicador: row[5],
+    proceso: row[6],
     valor: row[7] ? (isNaN(parseFloat(row[7])) ? row[7] : parseFloat(row[7])) : null,
-    meta: row[8] || '',
-    estatus: row[9] || '',
-    tendencia: row[10] || ''
+    meta: row[8],
+    estatus: row[9],
+    tendencia: row[10]
   }));
 }
 
-// COORDINACIÓN (unificado con endpoint)
+// ─── COORDINACIÓN (unificado con endpoint) ─────────────────────
 export async function getCoordinacionData() {
-  const data = await getSheetData('COORDINACION_DETALLE!A2:N');
+  const data = await getSheetData('COORDINACION_DETALLE!A2:N'); // hasta columna N
   return data.map(row => ({
     fecha: row[0] || '',
     mes: row[1] || '',
@@ -93,7 +93,7 @@ export async function getCoordinacionData() {
   }));
 }
 
-// AGENDAMIENTO
+// ─── AGENDAMIENTO (unificado con endpoint) ────────────────────
 export async function getAgendamientoData() {
   const data = await getSheetData('AGENDAMIENTO_DETALLE!A2:O');
   return data.map(row => ({
@@ -111,13 +111,14 @@ export async function getAgendamientoData() {
     efectividadAgendamiento: row[11] ? parseFloat(row[11]) : 0,
     estatus: row[12] || '',
     scoreTotal: row[13] ? parseFloat(row[13]) : 0,
+    // opcionales si existen más columnas
     reincidencias: row[14] ? parseInt(row[14]) : 0,
     ultimaAuditoria: row[15] || '',
     proximaRevision: row[16] || ''
   }));
 }
 
-// COLABORADORES
+// ─── COLABORADORES ─────────────────────────────────────────────
 export async function getColaboradoresData() {
   const data = await getSheetData('COLABORADORES!A2:I');
   return data.map(row => ({
@@ -133,7 +134,7 @@ export async function getColaboradoresData() {
   }));
 }
 
-// SEGUIMIENTO
+// ─── SEGUIMIENTO ───────────────────────────────────────────────
 export async function getSeguimientoData() {
   const data = await getSheetData('SEGUIMIENTO!A2:P');
   return data.map((row, idx) => ({

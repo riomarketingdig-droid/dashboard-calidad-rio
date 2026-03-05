@@ -24,21 +24,21 @@ export default async function handler(req, res) {
   try {
     const { fechaInicio, fechaFin } = req.query;
     const data = await getSheetData('COORDINACION_DETALLE!A2:J');
-    console.log(`Coordinación: ${data.length} filas leídas`);
 
-    let datos = data.map((row, index) => {
+    let datos = data.map(row => {
       const ftr = row[4] ? parseFloat(row[4]) : 0;
       const tiempo = row[5] ? parseFloat(row[5]) : 0;
       const noConf = row[7] ? parseInt(row[7]) : 0;
       const semaforoSheet = row[9] || '';
+      // Si el sheet no trae semáforo válido, lo calculamos
       const semaforoValido = ['VERDE', 'AMARILLO', 'ROJO'].includes(semaforoSheet) ? semaforoSheet : calcularSemaforo(ftr, tiempo, noConf);
 
       return {
-        fecha: row[0] || '',
+        fecha: row[0],
         fechaObj: parseFecha(row[0]),
-        mes: row[1] || '',
-        colaborador: row[2] || '',
-        unidad: row[3] || '',
+        mes: row[1],
+        colaborador: row[2],
+        unidad: row[3],
         ftr,
         tiempoPromedio: tiempo,
         cantidadRegistros: row[6] ? parseInt(row[6]) : 0,
@@ -52,11 +52,9 @@ export default async function handler(req, res) {
       const inicio = new Date(fechaInicio);
       const fin = new Date(fechaFin);
       datos = datos.filter(d => d.fechaObj && d.fechaObj >= inicio && d.fechaObj <= fin);
-      console.log(`Filtrado por fecha: ${datos.length} registros`);
     }
 
     datos = datos.map(({ fechaObj, ...rest }) => rest);
-    console.log(`Enviando ${datos.length} registros de coordinación`);
     res.status(200).json(datos);
   } catch (error) {
     console.error('Error en coordinacion:', error);

@@ -13,8 +13,9 @@ export default async function handler(req, res) {
 
     const recomendaciones = [];
 
-    // Coordinación
+    // ---- Coordinación ----
     coordinacion.forEach(agente => {
+      // URGENTE: reincidencias >= 2
       if (agente.reincidencias >= 2) {
         recomendaciones.push({
           id: `coord-${agente.colaborador}-reincidencia`,
@@ -28,7 +29,9 @@ export default async function handler(req, res) {
           fechaLimite: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           feedback: ''
         });
-      } else if (agente.ftr < 95) {
+      }
+      // CRÍTICO: FTR < 95%
+      else if (agente.ftr < 95) {
         recomendaciones.push({
           id: `coord-${agente.colaborador}-ftr`,
           nivel: 'CRÍTICO',
@@ -41,7 +44,9 @@ export default async function handler(req, res) {
           fechaLimite: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           feedback: ''
         });
-      } else if (agente.tiempoPromedio > 8) {
+      }
+      // ALTO: tiempo > 8 min
+      else if (agente.tiempoPromedio > 8) {
         recomendaciones.push({
           id: `coord-${agente.colaborador}-tiempo`,
           nivel: 'ALTO',
@@ -54,7 +59,9 @@ export default async function handler(req, res) {
           fechaLimite: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           feedback: ''
         });
-      } else if (agente.ftr >= 98 && agente.tiempoPromedio <= 7 && agente.noConformidades === 0) {
+      }
+      // VERDE: buen desempeño (opcional)
+      else if (agente.ftr >= 98 && agente.tiempoPromedio <= 7 && agente.noConformidades === 0) {
         recomendaciones.push({
           id: `coord-${agente.colaborador}-excelente`,
           nivel: 'VERDE',
@@ -70,8 +77,9 @@ export default async function handler(req, res) {
       }
     });
 
-    // Agendamiento
+    // ---- Agendamiento ----
     agendamiento.forEach(asesor => {
+      // URGENTE: reincidencias >= 2
       if (asesor.reincidencias >= 2) {
         recomendaciones.push({
           id: `agen-${asesor.asesor}-reincidencia`,
@@ -85,7 +93,9 @@ export default async function handler(req, res) {
           fechaLimite: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           feedback: ''
         });
-      } else if (asesor.scoreTotal < 70) {
+      }
+      // CRÍTICO: score < 70
+      else if (asesor.scoreTotal < 70) {
         recomendaciones.push({
           id: `agen-${asesor.asesor}-score`,
           nivel: 'CRÍTICO',
@@ -98,7 +108,9 @@ export default async function handler(req, res) {
           fechaLimite: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           feedback: ''
         });
-      } else if (asesor.efectividadHallazgos < 90) {
+      }
+      // ALTO: muchos hallazgos (por ejemplo, efectividadHallazgos < 90%)
+      else if (asesor.efectividadHallazgos < 90) {
         recomendaciones.push({
           id: `agen-${asesor.asesor}-hallazgos`,
           nivel: 'ALTO',
@@ -111,7 +123,9 @@ export default async function handler(req, res) {
           fechaLimite: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           feedback: ''
         });
-      } else if (asesor.scoreTotal >= 90) {
+      }
+      // VERDE: score >= 90
+      else if (asesor.scoreTotal >= 90) {
         recomendaciones.push({
           id: `agen-${asesor.asesor}-excelente`,
           nivel: 'VERDE',
