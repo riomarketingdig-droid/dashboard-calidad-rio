@@ -9,17 +9,20 @@ export default async function handler(req, res) {
 
     const recomendaciones = [];
 
-    // ---- Coordinación ----
+    // ---- Coordinación: solo si hay desviaciones ----
     coordinacion.forEach(agente => {
-      // Prioridad: reincidencias (URGENTE)
+      // Si no hay problemas, no generar recomendación
+      if (agente.ftr >= 95 && agente.tiempoPromedio <= 8 && agente.noConformidades <= 2 && agente.reincidencias < 2) return;
+
+      // Reincidencias (URGENTE)
       if (agente.reincidencias >= 2) {
         recomendaciones.push({
-          id: `coord-${agente.colaborador}-reincidencia`,
+          id: `coord-${agente.colaborador}-reincidencia-${Date.now()}`,
           nivel: 'URGENTE',
           area: 'Coordinación',
           agente: agente.colaborador,
           metrica: `${agente.reincidencias} reincidencias`,
-          sugerencia: 'Aplicar plan de mejora según regla de reincidencia',
+          sugerencia: 'Aplicar plan de mejora según regla de reincidencia. Documentar en SEGUIMIENTO.',
           responsable: 'Coordinador de Calidad',
           plazo: '24 horas',
           fechaLimite: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -29,12 +32,12 @@ export default async function handler(req, res) {
       // FTR bajo (CRÍTICO)
       else if (agente.ftr < 95) {
         recomendaciones.push({
-          id: `coord-${agente.colaborador}-ftr`,
+          id: `coord-${agente.colaborador}-ftr-${Date.now()}`,
           nivel: 'CRÍTICO',
           area: 'Coordinación',
           agente: agente.colaborador,
           metrica: `FTR ${agente.ftr.toFixed(1)}%`,
-          sugerencia: 'Revisión diaria de 5 registros con feedback inmediato',
+          sugerencia: 'Revisión diaria de 5 registros con feedback inmediato. Enfocarse en campos omitidos.',
           responsable: 'Coordinador de Calidad',
           plazo: 'Inmediato',
           fechaLimite: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -44,12 +47,12 @@ export default async function handler(req, res) {
       // Tiempo alto (ALTO)
       else if (agente.tiempoPromedio > 8) {
         recomendaciones.push({
-          id: `coord-${agente.colaborador}-tiempo`,
+          id: `coord-${agente.colaborador}-tiempo-${Date.now()}`,
           nivel: 'ALTO',
           area: 'Coordinación',
           agente: agente.colaborador,
           metrica: `${agente.tiempoPromedio.toFixed(1)} min promedio`,
-          sugerencia: 'Taller de atajos y optimización de tiempos',
+          sugerencia: 'Taller de atajos y optimización de tiempos. Practicar con ejercicios cronometrados.',
           responsable: 'Coach de Procesos',
           plazo: 'Esta semana',
           fechaLimite: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -59,12 +62,12 @@ export default async function handler(req, res) {
       // No conformidades altas (ALTO)
       else if (agente.noConformidades > 2) {
         recomendaciones.push({
-          id: `coord-${agente.colaborador}-noconf`,
+          id: `coord-${agente.colaborador}-noconf-${Date.now()}`,
           nivel: 'ALTO',
           area: 'Coordinación',
           agente: agente.colaborador,
           metrica: `${agente.noConformidades} no conformidades`,
-          sugerencia: 'Revisión de calidad de registros y retroalimentación específica',
+          sugerencia: 'Revisión de calidad de registros. Identificar patrones de error comunes.',
           responsable: 'Analista de Calidad',
           plazo: 'Esta semana',
           fechaLimite: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -74,12 +77,12 @@ export default async function handler(req, res) {
       // Buen desempeño (VERDE)
       else if (agente.ftr >= 98 && agente.tiempoPromedio <= 7 && agente.noConformidades === 0) {
         recomendaciones.push({
-          id: `coord-${agente.colaborador}-excelente`,
+          id: `coord-${agente.colaborador}-excelente-${Date.now()}`,
           nivel: 'VERDE',
           area: 'Coordinación',
           agente: agente.colaborador,
           metrica: `FTR ${agente.ftr.toFixed(1)}%`,
-          sugerencia: 'Destacar como ejemplo y compartir buenas prácticas',
+          sugerencia: 'Destacar como ejemplo y compartir buenas prácticas en reunión de equipo.',
           responsable: 'Gerencia',
           plazo: 'Este mes',
           fechaLimite: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -88,62 +91,60 @@ export default async function handler(req, res) {
       }
     });
 
-    // ---- Agendamiento (similar) ----
+    // ---- Agendamiento: solo si hay desviaciones ----
     agendamiento.forEach(asesor => {
-      // Reincidencias (URGENTE)
+      if (asesor.scoreTotal >= 70 && asesor.efectividadHallazgos >= 90 && asesor.reincidencias < 2) return;
+
       if (asesor.reincidencias >= 2) {
         recomendaciones.push({
-          id: `agen-${asesor.asesor}-reincidencia`,
+          id: `agen-${asesor.asesor}-reincidencia-${Date.now()}`,
           nivel: 'URGENTE',
           area: 'Agendamiento',
           agente: asesor.asesor,
           metrica: `${asesor.reincidencias} reincidencias`,
-          sugerencia: 'Aplicar acta administrativa según regla de reincidencia',
+          sugerencia: 'Aplicar acta administrativa según regla de reincidencia. Notificar a RH.',
           responsable: 'Coordinador',
           plazo: '24 horas',
           fechaLimite: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           feedback: ''
         });
       }
-      // Score bajo (CRÍTICO)
       else if (asesor.scoreTotal < 70) {
         recomendaciones.push({
-          id: `agen-${asesor.asesor}-score`,
+          id: `agen-${asesor.asesor}-score-${Date.now()}`,
           nivel: 'CRÍTICO',
           area: 'Agendamiento',
           agente: asesor.asesor,
           metrica: `Score ${asesor.scoreTotal}`,
-          sugerencia: 'Programar sesión diaria de role-play enfocada en objeciones comunes',
+          sugerencia: 'Programar sesión diaria de role-play enfocada en objeciones comunes y cierre.',
           responsable: 'Coordinador de Ventas',
           plazo: 'Inmediato',
           fechaLimite: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           feedback: ''
         });
       }
-      // Hallazgos altos (ALTO)
       else if (asesor.efectividadHallazgos < 90) {
         recomendaciones.push({
-          id: `agen-${asesor.asesor}-hallazgos`,
+          id: `agen-${asesor.asesor}-hallazgos-${Date.now()}`,
           nivel: 'ALTO',
           area: 'Agendamiento',
           agente: asesor.asesor,
           metrica: `Efectividad Hallazgos ${asesor.efectividadHallazgos.toFixed(1)}%`,
-          sugerencia: 'Revisión de 5 llamadas grabadas por semana con feedback estructurado',
+          sugerencia: 'Revisión de 5 llamadas grabadas por semana con feedback estructurado. Usar plantilla de calidad.',
           responsable: 'Auditor de Calidad',
           plazo: 'Esta semana',
           fechaLimite: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           feedback: ''
         });
       }
-      // Buen desempeño (VERDE)
       else if (asesor.scoreTotal >= 90) {
         recomendaciones.push({
-          id: `agen-${asesor.asesor}-excelente`,
+          id: `agen-${asesor.asesor}-excelente-${Date.now()}`,
           nivel: 'VERDE',
           area: 'Agendamiento',
           agente: asesor.asesor,
           metrica: `Score ${asesor.scoreTotal}`,
-          sugerencia: 'Destacar como mentor y compartir mejores prácticas',
+          sugerencia: 'Destacar como mentor y compartir mejores prácticas en reunión de ventas.',
           responsable: 'Gerencia',
           plazo: 'Este mes',
           fechaLimite: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
