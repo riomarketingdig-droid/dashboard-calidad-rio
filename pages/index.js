@@ -362,6 +362,14 @@ export default function Dashboard() {
     );
   }
 
+  // Función segura para formatear números
+  const formatNumber = (value, decimals = 1) => {
+    if (value === null || value === undefined || value === '') return '0';
+    const num = Number(value);
+    if (isNaN(num)) return '0';
+    return num.toFixed(decimals);
+  };
+
   return (
     <div className="min-h-screen bg-[#f8fafc] font-sans text-slate-900">
       {fichaColaborador && (
@@ -446,7 +454,7 @@ export default function Dashboard() {
                   <div className="text-xs font-bold text-slate-400 uppercase mb-2">% Efectividad Registro</div>
                   <div className="flex items-end justify-between">
                     <div>
-                      <span className="text-2xl font-black text-slate-800">{kpisData.coordinacion?.ftr?.toFixed(1) ?? '0'}%</span>
+                      <span className="text-2xl font-black text-slate-800">{formatNumber(kpisData.coordinacion?.ftr)}%</span>
                       <span className="text-xs text-slate-400 ml-1">/ 98%</span>
                     </div>
                     <span className="text-lg text-emerald-600">↑</span>
@@ -456,7 +464,7 @@ export default function Dashboard() {
                   <div className="text-xs font-bold text-slate-400 uppercase mb-2">% Cumplimiento Tiempo 7 min</div>
                   <div className="flex items-end justify-between">
                     <div>
-                      <span className="text-2xl font-black text-slate-800">{(kpisData.coordinacion?.tiempo ? (kpisData.coordinacion.tiempo/10)*100 : 0).toFixed(1)}%</span>
+                      <span className="text-2xl font-black text-slate-800">{kpisData.coordinacion?.tiempo ? ((Number(kpisData.coordinacion.tiempo)/10)*100).toFixed(1) : '0'}%</span>
                       <span className="text-xs text-slate-400 ml-1">/ 85%</span>
                     </div>
                     <span className="text-lg text-emerald-600">↑</span>
@@ -496,7 +504,7 @@ export default function Dashboard() {
                   <div className="text-xs font-bold text-slate-400 uppercase mb-2">Oportunidades</div>
                   <div className="flex items-end justify-between">
                     <div>
-                      <span className="text-2xl font-black text-slate-800">{kpisData.agendamiento?.oportunidades?.toFixed(1) ?? '0'}%</span>
+                      <span className="text-2xl font-black text-slate-800">{formatNumber(kpisData.agendamiento?.oportunidades)}%</span>
                       <span className="text-xs text-slate-400 ml-1">/ 75%</span>
                     </div>
                     <span className="text-lg text-slate-400">→</span>
@@ -506,7 +514,7 @@ export default function Dashboard() {
                   <div className="text-xs font-bold text-slate-400 uppercase mb-2">Cierres</div>
                   <div className="flex items-end justify-between">
                     <div>
-                      <span className="text-2xl font-black text-slate-800">{kpisData.agendamiento?.oportunidades ? (kpisData.agendamiento.oportunidades * 0.8).toFixed(1) : '0'}%</span>
+                      <span className="text-2xl font-black text-slate-800">{kpisData.agendamiento?.oportunidades ? (Number(kpisData.agendamiento.oportunidades) * 0.8).toFixed(1) : '0'}%</span>
                       <span className="text-xs text-slate-400 ml-1">/ 80%</span>
                     </div>
                     <span className="text-lg text-slate-400">→</span>
@@ -516,7 +524,7 @@ export default function Dashboard() {
                   <div className="text-xs font-bold text-slate-400 uppercase mb-2">% Conversión</div>
                   <div className="flex items-end justify-between">
                     <div>
-                      <span className="text-2xl font-black text-slate-800">{kpisData.agendamiento?.score?.toFixed(1) ?? '0'}%</span>
+                      <span className="text-2xl font-black text-slate-800">{formatNumber(kpisData.agendamiento?.score)}%</span>
                       <span className="text-xs text-slate-400 ml-1">/ 95%</span>
                     </div>
                     <span className="text-lg text-slate-400">→</span>
@@ -544,12 +552,12 @@ export default function Dashboard() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
                   <p className="text-xs font-bold text-slate-400 uppercase">NPS Promedio</p>
-                  <p className="text-3xl font-black text-slate-800 mt-1">{kpisData.satisfaccion?.nps ?? 'N/A'}</p>
+                  <p className="text-3xl font-black text-slate-800 mt-1">{kpisData.satisfaccion?.nps ? Number(kpisData.satisfaccion.nps).toFixed(1) : 'N/A'}</p>
                   <p className="text-xs text-slate-400 mt-2">Meta: 9.0</p>
                 </div>
                 <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
                   <p className="text-xs font-bold text-slate-400 uppercase">% Felicitaciones</p>
-                  <p className="text-3xl font-black text-slate-800 mt-1">{kpisData.satisfaccion?.felicitaciones ?? '0'}%</p>
+                  <p className="text-3xl font-black text-slate-800 mt-1">{formatNumber(kpisData.satisfaccion?.felicitaciones)}%</p>
                   <p className="text-xs text-slate-400 mt-2">Meta: 90%</p>
                 </div>
                 <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
@@ -559,7 +567,7 @@ export default function Dashboard() {
                 </div>
                 <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
                   <p className="text-xs font-bold text-slate-400 uppercase">Tiempo Prom. Cierre</p>
-                  <p className="text-3xl font-black text-slate-800 mt-1">{kpisData.satisfaccion?.tiempoCierre?.toFixed(1) ?? 0} días</p>
+                  <p className="text-3xl font-black text-slate-800 mt-1">{kpisData.satisfaccion?.tiempoCierre ? Number(kpisData.satisfaccion.tiempoCierre).toFixed(1) : '0'} días</p>
                   <p className="text-xs text-slate-400 mt-2">Meta: 2 días</p>
                 </div>
               </div>
@@ -567,7 +575,7 @@ export default function Dashboard() {
           </>
         )}
 
-        {/* ========== VISTA COORDINACIÓN ========== */}
+        {/* ========== VISTA COORDINACIÓN (sin cambios) ========== */}
         {activeTab === 'coordinacion' && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
             <div className="px-6 py-4 bg-slate-50 border-b border-slate-100">
@@ -630,7 +638,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* ========== VISTA AGENDAMIENTO ========== */}
+        {/* ========== VISTA AGENDAMIENTO (sin cambios) ========== */}
         {activeTab === 'agendamiento' && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
             <div className="px-6 py-4 bg-slate-50 border-b border-slate-100">
@@ -685,7 +693,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* ========== VISTA SATISFACCIÓN ========== */}
+        {/* ========== VISTA SATISFACCIÓN (sin cambios) ========== */}
         {activeTab === 'satisfaccion' && (
           <div className="space-y-6">
             {/* Filtros con etiquetas */}
@@ -725,7 +733,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* ========== VISTA PLAN DE ACCIÓN ========== */}
+        {/* ========== VISTA PLAN DE ACCIÓN (sin cambios) ========== */}
         {activeTab === 'planaccion' && (
           <div className="space-y-6">
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
