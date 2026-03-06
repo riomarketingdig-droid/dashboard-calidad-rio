@@ -1,10 +1,6 @@
 ﻿import { getCoordinacionData, getAgendamientoData } from '../../lib/googleSheets';
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ message: 'Method not allowed' });
-  }
-
   try {
     const [coordinacion, agendamiento] = await Promise.all([
       getCoordinacionData(),
@@ -13,8 +9,9 @@ export default async function handler(req, res) {
 
     const recomendaciones = [];
 
-    // Coordinación
+    // ---- Coordinación ----
     coordinacion.forEach(agente => {
+      // Prioridad: reincidencias (URGENTE)
       if (agente.reincidencias >= 2) {
         recomendaciones.push({
           id: `coord-${agente.colaborador}-reincidencia`,
@@ -28,7 +25,9 @@ export default async function handler(req, res) {
           fechaLimite: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           feedback: ''
         });
-      } else if (agente.ftr < 95) {
+      }
+      // FTR bajo (CRÍTICO)
+      else if (agente.ftr < 95) {
         recomendaciones.push({
           id: `coord-${agente.colaborador}-ftr`,
           nivel: 'CRÍTICO',
@@ -41,7 +40,9 @@ export default async function handler(req, res) {
           fechaLimite: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           feedback: ''
         });
-      } else if (agente.tiempoPromedio > 8) {
+      }
+      // Tiempo alto (ALTO)
+      else if (agente.tiempoPromedio > 8) {
         recomendaciones.push({
           id: `coord-${agente.colaborador}-tiempo`,
           nivel: 'ALTO',
@@ -54,7 +55,24 @@ export default async function handler(req, res) {
           fechaLimite: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           feedback: ''
         });
-      } else if (agente.ftr >= 98 && agente.tiempoPromedio <= 7 && agente.noConformidades === 0) {
+      }
+      // No conformidades altas (ALTO)
+      else if (agente.noConformidades > 2) {
+        recomendaciones.push({
+          id: `coord-${agente.colaborador}-noconf`,
+          nivel: 'ALTO',
+          area: 'Coordinación',
+          agente: agente.colaborador,
+          metrica: `${agente.noConformidades} no conformidades`,
+          sugerencia: 'Revisión de calidad de registros y retroalimentación específica',
+          responsable: 'Analista de Calidad',
+          plazo: 'Esta semana',
+          fechaLimite: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          feedback: ''
+        });
+      }
+      // Buen desempeño (VERDE)
+      else if (agente.ftr >= 98 && agente.tiempoPromedio <= 7 && agente.noConformidades === 0) {
         recomendaciones.push({
           id: `coord-${agente.colaborador}-excelente`,
           nivel: 'VERDE',
@@ -70,8 +88,9 @@ export default async function handler(req, res) {
       }
     });
 
-    // Agendamiento
+    // ---- Agendamiento (similar) ----
     agendamiento.forEach(asesor => {
+      // Reincidencias (URGENTE)
       if (asesor.reincidencias >= 2) {
         recomendaciones.push({
           id: `agen-${asesor.asesor}-reincidencia`,
@@ -85,7 +104,9 @@ export default async function handler(req, res) {
           fechaLimite: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           feedback: ''
         });
-      } else if (asesor.scoreTotal < 70) {
+      }
+      // Score bajo (CRÍTICO)
+      else if (asesor.scoreTotal < 70) {
         recomendaciones.push({
           id: `agen-${asesor.asesor}-score`,
           nivel: 'CRÍTICO',
@@ -98,7 +119,9 @@ export default async function handler(req, res) {
           fechaLimite: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           feedback: ''
         });
-      } else if (asesor.efectividadHallazgos < 90) {
+      }
+      // Hallazgos altos (ALTO)
+      else if (asesor.efectividadHallazgos < 90) {
         recomendaciones.push({
           id: `agen-${asesor.asesor}-hallazgos`,
           nivel: 'ALTO',
@@ -111,7 +134,9 @@ export default async function handler(req, res) {
           fechaLimite: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           feedback: ''
         });
-      } else if (asesor.scoreTotal >= 90) {
+      }
+      // Buen desempeño (VERDE)
+      else if (asesor.scoreTotal >= 90) {
         recomendaciones.push({
           id: `agen-${asesor.asesor}-excelente`,
           nivel: 'VERDE',
